@@ -3,12 +3,12 @@
 namespace CodesWholesaleApi\Api;
 
 use CodesWholesaleApi\Auth\TokenNormalizer;
-use CodesWholesaleApi\Config\CodesWholesaleConfig;
+use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Storage\StorageInterface;
 
 final class Client
 {
-    /** @var CodesWholesaleConfig */
+    /** @var Config */
     private $config;
 
     /** @var string */
@@ -30,13 +30,13 @@ final class Client
     private $userAgent;
 
     public function __construct(
-        CodesWholesaleConfig $config,
+        Config           $config,
         StorageInterface $storage,
-        string $clientId,
-        string $clientSecret,
-        TokenNormalizer $normalizer = null,
-        int $timeoutSeconds = 20,
-        string $userAgent = 'CodesWholesaleClient/1.0'
+        string           $clientId,
+        string           $clientSecret,
+        TokenNormalizer  $normalizer = null,
+        int              $timeoutSeconds = 20,
+        string           $userAgent = 'CodesWholesaleClient/1.0'
     ) {
         $this->config = $config;
         $this->storage = $storage;

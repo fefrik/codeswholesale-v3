@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use CodesWholesaleApi\Api\Client;
 use CodesWholesaleApi\Auth\TokenNormalizer;
-use CodesWholesaleApi\Config\CodesWholesaleConfig;
+use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Storage\TokenSessionStorage;
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -17,7 +17,7 @@ $clientSecret = getenv('CWS_CLIENT_SECRET') ?: 'YOUR_CLIENT_SECRET';
 $storage = new TokenSessionStorage('codeswholesale_token');
 
 // --- Config (SANDBOX) ---
-$config = new CodesWholesaleConfig(true);
+$config = new Config(true);
 
 // --- Client ---
 $client = new Client(

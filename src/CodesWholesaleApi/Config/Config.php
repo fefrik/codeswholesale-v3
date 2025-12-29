@@ -4,7 +4,7 @@ namespace CodesWholesaleApi\Config;
 
 use CodesWholesaleApi\CodesWholesale;
 
-final class CodesWholesaleConfig
+final class Config
 {
     /** @var bool */
     private bool $sandbox;
