@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesale\Resource;
+namespace CodesWholesaleApi\Resource;
 
 final class AccountItem
 {

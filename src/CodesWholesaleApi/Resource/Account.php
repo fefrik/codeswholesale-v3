@@ -1,7 +1,7 @@
 <?php
 
-namespace CodesWholesale\Resource;
-use CodesWholesale\Api\Client;
+namespace CodesWholesaleApi\Resource;
+use CodesWholesaleApi\Api\Client;
 
 class Account {
 

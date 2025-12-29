@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesale\Storage;
+namespace CodesWholesaleApi\Storage;
 
 final class TokenSessionStorage implements StorageInterface
 {

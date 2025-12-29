@@ -1,8 +1,8 @@
 <?php
 
-namespace CodesWholesale\Config;
+namespace CodesWholesaleApi\Config;
 
-use CodesWholesale\CodesWholesale;
+use CodesWholesaleApi\CodesWholesale;
 
 final class CodesWholesaleConfig
 {

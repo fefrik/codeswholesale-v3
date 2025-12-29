@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesale;
+namespace CodesWholesaleApi;
 
 final class CodesWholesale
 {

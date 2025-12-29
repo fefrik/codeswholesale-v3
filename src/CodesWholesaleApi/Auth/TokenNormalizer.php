@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesale\Auth;
+namespace CodesWholesaleApi\Auth;
 
 final class TokenNormalizer
 {

@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesale\Storage;
+namespace CodesWholesaleApi\Storage;
 
 interface StorageInterface
 {

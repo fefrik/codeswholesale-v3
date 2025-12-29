@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use CodesWholesale\Api\Client;
-use CodesWholesale\Auth\TokenNormalizer;
-use CodesWholesale\Config\CodesWholesaleConfig;
-use CodesWholesale\Storage\TokenSessionStorage;
+use CodesWholesaleApi\Api\Client;
+use CodesWholesaleApi\Auth\TokenNormalizer;
+use CodesWholesaleApi\Config\CodesWholesaleConfig;
+use CodesWholesaleApi\Storage\TokenSessionStorage;
 
 require __DIR__ . '/../vendor/autoload.php';
 

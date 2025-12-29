@@ -1,10 +1,10 @@
 <?php
 
-namespace CodesWholesale\Api;
+namespace CodesWholesaleApi\Api;
 
-use CodesWholesale\Auth\TokenNormalizer;
-use CodesWholesale\Config\CodesWholesaleConfig;
-use CodesWholesale\Storage\StorageInterface;
+use CodesWholesaleApi\Auth\TokenNormalizer;
+use CodesWholesaleApi\Config\CodesWholesaleConfig;
+use CodesWholesaleApi\Storage\StorageInterface;
 
 final class Client
 {
