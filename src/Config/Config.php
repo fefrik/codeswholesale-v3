@@ -1,6 +1,6 @@
 <?php
 
-namespace Config;
+namespace CodesWholesaleApi\Config;
 
 use CodesWholesaleApi\CodesWholesale;
 
