@@ -32,7 +32,7 @@ final class TokenDatabaseOAuthStorage implements OAuthStorageInterface
         $stmt->bindValue(':client_config_id', $this->tokenKey, PDO::PARAM_STR);
         $stmt->bindValue(':access_token', (string)$tokenData['access_token'], PDO::PARAM_STR);
         $stmt->bindValue(':token_type', (string)($tokenData['token_type'] ?? 'bearer'), PDO::PARAM_STR);
-        $stmt->bindValue(':expires_in', (int)$tokenData['expires_in'], PDO::PARAM_INT);
+        $stmt->bindValue(':expires_in', (int)$tokenData['expires_at'], PDO::PARAM_INT);
         $stmt->execute();
     }
 
