@@ -3,77 +3,81 @@
 namespace CodesWholesaleApi\Resource;
 
 use CodesWholesaleApi\Api\Client;
+use CodesWholesaleApi\Api\ApiException;
 
-class Product {
-
+class Product
+{
     /**
-     * Retrieve all products, optionally processing them with a callback
+     * Retrieve all products (paged), optionally processing them with a callback.
      *
-     * @param Client $client The CodesWholesale client
-     * @param callable|null $callback Callback to process retrieved items
-     * @param string|null $continuationToken Token for paginated requests
+     * Callback signature:
+     *   function(array $items, ?string $nextToken): void|bool
+     * If callback returns false, iteration stops early.
+     *
+     * @param Client $client
+     * @param callable $callback
+     * @param string|null $continuationToken
+     * @param int $maxRetry
      *
      * @return void
-     * @throws \Exception If maximum retries are exceeded
      */
-    public static function getAll(Client $client, callable $callback, ?string $continuationToken = null): void {
-
+    public static function getAll(
+        Client $client,
+        callable $callback,
+        ?string $continuationToken = null,
+        int $maxRetry = 5
+    ): void {
         $retry = 0;
-        $maxRetry = 5;
 
-        do {
-
+        while (true) {
             try {
-
-                $params = [];
-
+                $query = [];
                 if ($continuationToken) {
-                    $params['continuationToken'] = $continuationToken;
+                    $query['continuationToken'] = $continuationToken;
                 }
 
-                $response = $client->request('GET', '/v3/products', $params);
+                $apiResponse = $client->request('GET', '/v3/products', null, $query);
+                $data = $apiResponse->getData();
 
-                if (!empty($response['items'])) {
-                    $callback($response['items'], $response['continuationToken'] ?? null);
+                $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
+                $nextToken = isset($data['continuationToken']) && is_string($data['continuationToken'])
+                    ? $data['continuationToken']
+                    : null;
+
+                if (!empty($items)) {
+                    $result = $callback($items, $nextToken);
+                    if ($result === false) {
+                        return;
+                    }
                 }
 
-                $continuationToken = $response['continuationToken'] ?? null;
+                $continuationToken = $nextToken;
                 $retry = 0;
 
-                usleep(200000);
-
-            } catch (\Exception $e) {
-
-                $retry++;
-
-                if ($retry > $maxRetry) {
-                    throw new \Exception("Failed after {$maxRetry} attempts: " . $e->getMessage());
+                if (!$continuationToken) {
+                    return; // done
                 }
 
-                sleep(3);
-
+                // malý “polite delay” vůči API
+                usleep(200000);
+            } catch (ApiException $e) {
+                $retry++;
+                if ($retry > $maxRetry) {
+                    $status = $e->getResponse()->getStatus();
+                    throw new \RuntimeException(
+                        "Failed after {$maxRetry} attempts (last HTTP {$status}): " . $e->getMessage(),
+                        0,
+                        $e
+                    );
+                }
+                sleep(3 * $retry);
             }
-
-        } while ($continuationToken);
-
+        }
     }
 
-
-    /**
-     * Retrieve a product by its ID
-     *
-     * @param Client $client The CodesWholesale client
-     * @param string $productId The product identifier
-     *
-     * @return ProductItem|null ProductItem instance or null if not found
-     */
-    public static function getById(Client $client, string $productId): ?ProductItem {
-
-        $response = $client->request('GET', "/v3/products/{$productId}");
-        $data = $response->getData();
-
+    public static function getById(Client $client, string $productId): ?ProductItem
+    {
+        $response = $client->requestData('GET', "/v3/products/{$productId}");
         return !empty($data) ? new ProductItem($data) : null;
-
     }
-
 }

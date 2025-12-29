@@ -82,6 +82,11 @@ final class Client
         return $this->requestWithAuthRetry($method, $path, $body, $query, true);
     }
 
+    public function requestData(string $method, string $path, array $body = null, array $query = []): array
+    {
+        return $this->request($method, $path, $body, $query)->getData();
+    }
+
     // -------------------------
     // Auth retry wrapper
     // -------------------------
