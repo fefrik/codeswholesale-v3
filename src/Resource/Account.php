@@ -3,7 +3,6 @@
 namespace CodesWholesaleApi\Resource;
 
 use CodesWholesaleApi\Api\Client;
-use CodesWholesaleApi\Api\ApiResponse;
 
 class Account
 {
