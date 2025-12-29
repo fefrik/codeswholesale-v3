@@ -8,49 +8,77 @@ use CodesWholesaleApi\Api\ApiException;
 class Product
 {
     /**
-     * Retrieve products (paged) with optional filters.
+     * Fetch exactly one page of products.
      *
-     * Supported filters:
-     *  - productIds: string|array (CSV string "id1,id2" or ["id1","id2"])
-     *  - createdSince: string (ISO-8601), mutually exclusive with updatedSince
-     *  - updatedSince: string (ISO-8601), mutually exclusive with createdSince
+     * Supported query keys:
+     *  - productIds: string|array (CSV "id1,id2" or ["id1","id2"])
+     *  - createdSince: string (ISO-8601) mutually exclusive with updatedSince
+     *  - updatedSince: string (ISO-8601) mutually exclusive with createdSince
+     *  - continuationToken: string
+     *
+     * @return array{items: array, continuationToken: ?string, raw: array}
+     */
+    public static function getPage(Client $client, array $query = []): array
+    {
+        self::validateFilters($query);
+        $query = self::normalizeQuery($query);
+
+        $data = $client->requestData('GET', '/v3/products', null, $query);
+
+        $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
+        $token = isset($data['continuationToken']) && is_string($data['continuationToken'])
+            ? $data['continuationToken']
+            : null;
+
+        return [
+            'items' => $items,
+            'continuationToken' => $token,
+            'raw' => $data,
+        ];
+    }
+
+    /**
+     * Retrieve products (paged) with optional filters.
      *
      * Callback signature:
      *  function(array $items, ?string $nextToken): void|bool
      * Return false to stop early.
      */
     public static function getAll(
-        Client   $client,
+        Client $client,
         callable $callback,
-        array    $filters = [],
-        ?string  $continuationToken = null,
-        int      $maxRetry = 5
-    ): void
-    {
+        array $filters = [],
+        ?string $continuationToken = null,
+        int $maxRetry = 5
+    ): void {
+        if (isset($filters['continuationToken'])) {
+            throw new \InvalidArgumentException(
+                'continuationToken does not belong to filters; pass it as a separate argument.'
+            );
+        }
+
         self::validateFilters($filters);
 
         $retry = 0;
 
         while (true) {
             try {
-                $query = self::buildQuery($filters, $continuationToken);
+                $query = $filters;
 
-                $response = $client->request('GET', '/v3/products', null, $query);
-                $data = $response->getData();
+                if ($continuationToken) {
+                    $query['continuationToken'] = $continuationToken;
+                }
 
-                $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
-                $nextToken = isset($data['continuationToken']) && is_string($data['continuationToken'])
-                    ? $data['continuationToken']
-                    : null;
+                $page = self::getPage($client, $query);
 
-                if (!empty($items)) {
-                    $result = $callback($items, $nextToken);
+                if (!empty($page['items'])) {
+                    $result = $callback($page['items'], $page['continuationToken']);
                     if ($result === false) {
                         return;
                     }
                 }
 
-                $continuationToken = $nextToken;
+                $continuationToken = $page['continuationToken'];
                 $retry = 0;
 
                 if (!$continuationToken) {
@@ -78,21 +106,13 @@ class Product
 
     /**
      * Retrieve a single product by its ID.
-     *
-     * @param Client $client
-     * @param string $productId
-     *
-     * @return ProductItem|null
      */
     public static function getById(Client $client, string $productId): ?ProductItem
     {
-        $response = $client->requestData('GET', "/v3/products/{$productId}");
+        $data = $client->requestData('GET', "/v3/products/{$productId}");
         return !empty($data) ? new ProductItem($data) : null;
     }
 
-    /**
-     * Validate filters for mutual exclusivity.
-     */
     private static function validateFilters(array $filters): void
     {
         if (!empty($filters['createdSince']) && !empty($filters['updatedSince'])) {
@@ -100,32 +120,18 @@ class Product
         }
     }
 
-    /**
-     * Build query parameters from filters and continuation token.
-     */
-    private static function buildQuery(array $filters, ?string $continuationToken): array
+    private static function normalizeQuery(array $query): array
     {
-        $query = [];
-
-        if ($continuationToken) {
-            $query['continuationToken'] = $continuationToken;
+        // productIds: pole -> CSV, protože http_build_query by jinak dělalo productIds[0]=...
+        if (!empty($query['productIds']) && is_array($query['productIds'])) {
+            $query['productIds'] = implode(',', $query['productIds']);
         }
 
-        if (!empty($filters['productIds'])) {
-            // podporuj array i string
-            if (is_array($filters['productIds'])) {
-                $query['productIds'] = implode(',', $filters['productIds']);
-            } else {
-                $query['productIds'] = (string)$filters['productIds'];
+        // uklid prázdných stringů
+        foreach (['productIds', 'createdSince', 'updatedSince', 'continuationToken'] as $k) {
+            if (isset($query[$k]) && $query[$k] === '') {
+                unset($query[$k]);
             }
-        }
-
-        if (!empty($filters['createdSince'])) {
-            $query['createdSince'] = (string)$filters['createdSince'];
-        }
-
-        if (!empty($filters['updatedSince'])) {
-            $query['updatedSince'] = (string)$filters['updatedSince'];
         }
 
         return $query;
