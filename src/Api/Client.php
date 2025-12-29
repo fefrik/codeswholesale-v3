@@ -5,6 +5,7 @@ namespace CodesWholesaleApi\Api;
 use CodesWholesaleApi\Auth\TokenNormalizer;
 use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Storage\StorageInterface;
+use CodesWholesaleApi\Http\HttpResponse;
 
 final class Client
 {
@@ -30,13 +31,13 @@ final class Client
     private $userAgent;
 
     public function __construct(
-        Config           $config,
+        Config $config,
         StorageInterface $storage,
-        string           $clientId,
-        string           $clientSecret,
-        TokenNormalizer  $normalizer = null,
-        int              $timeoutSeconds = 20,
-        string           $userAgent = 'CodesWholesaleClient/1.0'
+        string $clientId,
+        string $clientSecret,
+        TokenNormalizer $normalizer = null,
+        int $timeoutSeconds = 20,
+        string $userAgent = 'CodesWholesaleClient/1.0'
     ) {
         $this->config = $config;
         $this->storage = $storage;
@@ -47,143 +48,174 @@ final class Client
         $this->userAgent = $userAgent;
     }
 
-    public function get(string $path, array $query = array()): array
+    // -------------------------
+    // Public API
+    // -------------------------
+
+    public function get(string $path, array $query = []): ApiResponse
     {
         return $this->request('GET', $path, null, $query);
     }
 
-    public function post(string $path, array $body = array(), array $query = array()): array
+    public function getData(string $path, array $query = []): array
+    {
+        return $this->get($path, $query)->getData();
+    }
+
+    public function post(string $path, array $body = [], array $query = []): ApiResponse
     {
         return $this->request('POST', $path, $body, $query);
     }
 
-    public function put(string $path, array $body = array(), array $query = array()): array
+    public function put(string $path, array $body = [], array $query = []): ApiResponse
     {
         return $this->request('PUT', $path, $body, $query);
     }
 
-    public function delete(string $path, array $query = array()): array
+    public function delete(string $path, array $query = []): ApiResponse
     {
         return $this->request('DELETE', $path, null, $query);
     }
 
-    public function request(string $method, string $path, array $body = null, array $query = array()): array
+    public function request(string $method, string $path, array $body = null, array $query = []): ApiResponse
     {
         return $this->requestWithAuthRetry($method, $path, $body, $query, true);
     }
 
-    private function requestWithAuthRetry(string $method, string $path, array $body = null, array $query = array(), bool $allowRetry = true): array
-    {
+    // -------------------------
+    // Auth retry wrapper
+    // -------------------------
+
+    private function requestWithAuthRetry(
+        string $method,
+        string $path,
+        array $body = null,
+        array $query = [],
+        bool $allowRetry = true
+    ): ApiResponse {
         $token = $this->getValidAccessToken();
 
-        $headers = array(
+        $headers = [
             'Accept: application/json',
             'Authorization: Bearer ' . $token,
-        );
+        ];
 
         if ($body !== null) {
             $headers[] = 'Content-Type: application/json';
         }
 
-        // důležité: neházej výjimku hned, chceme vidět status (kvůli 401)
-        $res = $this->curlJson(
+        $http = $this->curlJson(
             $method,
             $this->config->getApiBaseUrl() . $this->normalizePath($path),
             $headers,
             $body,
-            $query,
-            false
+            $query
         );
 
-        // Pokud token “umřel” mezi requesty → 401 → refresh + retry 1x
-        if ($res['status'] === 401 && $allowRetry) {
+        // token umřel mezi requesty → 401 → refresh + retry 1x
+        if ($http->isUnauthorized() && $allowRetry) {
             $this->storage->clearToken();
-
-            // druhý pokus už bez dalšího retry
             return $this->requestWithAuthRetry($method, $path, $body, $query, false);
         }
 
-        // Pokud je to pořád chyba, teď už to vyhoď jako výjimku
-        if ($res['status'] < 200 || $res['status'] >= 300) {
-            $msg = (is_array($res['data']) && isset($res['data']['message']))
-                ? $res['data']['message']
+        // error handling
+        if (!$http->isSuccess()) {
+            $json = $http->getJsonBody();
+            $msg = is_array($json)
+                ? ($json['message'] ?? $json['error_description'] ?? $json['error'] ?? 'Request failed')
                 : 'Request failed';
 
-            throw new \RuntimeException("CodesWholesale API error. HTTP {$res['status']}. {$msg}. Body: {$res['raw']}");
+            throw new ApiException(
+                $http,
+                "CodesWholesale API error. HTTP {$http->getStatus()}. {$msg}. Body: {$http->getRawBody()}"
+            );
         }
 
-        return $res;
+        // 2xx, ale není JSON → pro klienta je to kontraktová chyba
+        if ($http->getJsonBody() === null) {
+            throw new ApiException(
+                $http,
+                "CodesWholesale API returned non-JSON body. HTTP {$http->getStatus()}. Body: {$http->getRawBody()}"
+            );
+        }
+
+        return new ApiResponse($http, $http->getJsonBody());
     }
 
-
-    // --- Token handling ---
+    // -------------------------
+    // Token handling
+    // -------------------------
 
     private function getValidAccessToken(): string
     {
         $cached = $this->storage->getToken();
         if (is_array($cached) && !empty($cached['access_token'])) {
-            return (string)$cached['access_token'];
+            return (string) $cached['access_token'];
         }
 
         $raw = $this->fetchOAuthToken();
         $normalized = $this->normalizer->normalize($raw);
         $this->storage->saveToken($normalized);
 
-        return (string)$normalized['access_token'];
+        return (string) $normalized['access_token'];
     }
 
     private function fetchOAuthToken(): array
     {
-        $query = http_build_query(array(
+        $query = http_build_query([
             'grant_type'    => 'client_credentials',
             'client_id'     => $this->clientId,
             'client_secret' => $this->clientSecret,
-        ), '', '&', PHP_QUERY_RFC3986);
+        ], '', '&', PHP_QUERY_RFC3986);
 
         $url = $this->config->getApiBaseUrl() . '/oauth/token?' . $query;
 
         $ch = curl_init($url);
-        curl_setopt_array($ch, array(
+        curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
             CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
             CURLOPT_USERAGENT => $this->userAgent,
             CURLOPT_CUSTOMREQUEST => 'POST',
-            // žádné body, parametry jsou v query
-            CURLOPT_HTTPHEADER => array(
+            CURLOPT_HTTPHEADER => [
                 'Accept: application/json',
-            ),
-        ));
+            ],
+        ]);
 
         $response = curl_exec($ch);
         $errno = curl_errno($ch);
         $error = curl_error($ch);
-        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($response === false) {
             throw new \RuntimeException("OAuth token request failed: cURL error {$errno}: {$error}");
         }
 
-        $data = json_decode($response, true);
+        $data = json_decode((string) $response, true);
         if (!is_array($data)) {
             throw new \RuntimeException("OAuth token response is not valid JSON. HTTP {$status}. Body: {$response}");
         }
 
         if ($status < 200 || $status >= 300) {
             $msg = $data['message'] ?? ($data['error_description'] ?? ($data['error'] ?? 'Unknown OAuth error'));
-
             throw new \RuntimeException("OAuth token request failed. HTTP {$status}. {$msg}");
         }
 
         return $data;
     }
 
+    // -------------------------
+    // HTTP helper
+    // -------------------------
 
-    // --- HTTP helper ---
-
-    private function curlJson(string $method, string $url, array $headers, array $body = null, array $query = array(), bool $throwOnHttpError = true): array
-    {
+    private function curlJson(
+        string $method,
+        string $url,
+        array $headers,
+        array $body = null,
+        array $query = []
+    ): HttpResponse {
         if (!empty($query)) {
             $url .= (strpos($url, '?') !== false ? '&' : '?')
                 . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
@@ -198,48 +230,45 @@ final class Client
         }
 
         $ch = curl_init($url);
-        curl_setopt_array($ch, array(
+        curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
             CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
             CURLOPT_USERAGENT => $this->userAgent,
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
             CURLOPT_HTTPHEADER => $headers,
-        ));
+        ]);
 
         if ($payload !== null) {
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
         }
 
-        $response = curl_exec($ch);
+        $raw = curl_exec($ch);
         $errno = curl_errno($ch);
         $error = curl_error($ch);
-        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if ($response === false) {
+        if ($raw === false) {
             throw new \RuntimeException("HTTP request failed: cURL error {$errno}: {$error}");
         }
 
-        $data = null;
-        if ($response !== '' && $response !== null) {
-            $decoded = json_decode($response, true);
-            $data = is_array($decoded) ? $decoded : null;
+        $json = null;
+        $trimmed = trim((string) $raw);
+        if ($trimmed !== '') {
+            $decoded = json_decode($trimmed, true);
+            if (is_array($decoded)) {
+                $json = $decoded;
+            }
         }
 
-        if ($throwOnHttpError && ($status < 200 || $status >= 300)) {
-            $msg = is_array($data) && isset($data['message']) ? $data['message'] : 'Request failed';
-            throw new \RuntimeException("CodesWholesale API error. HTTP {$status}. {$msg}. Body: {$response}");
-        }
-
-        return array(
-            'status' => $status,
-            'headers' => array(),
-            'data' => $data !== null ? $data : $response,
-            'raw' => (string)$response,
+        return new HttpResponse(
+            $status,
+            (string) $raw,
+            $json,
+            []
         );
     }
-
 
     private function normalizePath(string $path): string
     {
