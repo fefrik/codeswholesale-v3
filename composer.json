@@ -1,0 +1,38 @@
+{
+  "name": "codeswholesale-v3/sdk",
+  "type": "library",
+  "description": "A PHP wrapper for CodesWholesale API v3",
+  "keywords": [
+    "codeswholesale",
+    "api",
+    "games",
+    "cd-keys"
+  ],
+  "homepage": "https://github.com/fefrik/codeswholesale-v3",
+  "license": "GPL-3.0-only",
+  "authors": [
+    {
+      "name": "Kupahrej.cz",
+      "email": "info@kupahrej.cz",
+      "role": "Owner"
+    }
+  ],
+  "require": {
+    "php": ">=7.4"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "CodesWholesale\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "CodesWholesale\\Tests\\": "tests/"
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

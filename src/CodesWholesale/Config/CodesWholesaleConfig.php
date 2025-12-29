@@ -1,0 +1,33 @@
+<?php
+
+namespace CodesWholesale\Config;
+
+use CodesWholesale\CodesWholesale;
+
+final class CodesWholesaleConfig
+{
+    /** @var bool */
+    private bool $sandbox;
+
+    public function __construct(bool $sandbox = true)
+    {
+        $this->sandbox = $sandbox;
+    }
+
+    public function isSandbox(): bool
+    {
+        return $this->sandbox;
+    }
+
+    public function getApiBaseUrl(): string
+    {
+        return $this->sandbox
+            ? CodesWholesale::SANDBOX_ENDPOINT
+            : CodesWholesale::LIVE_ENDPOINT;
+    }
+
+    public function getOauthTokenUrl(): string
+    {
+        return $this->getApiBaseUrl() . '/oauth/token';
+    }
+}
