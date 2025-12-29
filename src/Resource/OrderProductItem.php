@@ -7,9 +7,12 @@ class OrderProductItem
     /** @var array */
     private $data;
 
+    private $links;
+
     public function __construct(array $data)
     {
         $this->data = $data;
+        $this->links = new Links($data['links'] ?? []);
     }
 
     public function getProductId(): ?string
@@ -27,15 +30,13 @@ class OrderProductItem
         return isset($this->data['unitPrice']) ? (float) $this->data['unitPrice'] : null;
     }
 
-    public function getLinks(): array
+    public function getLinks(): Links
     {
-        return isset($this->data['links']) && is_array($this->data['links'])
-            ? $this->data['links']
-            : [];
+        return $this->links;
     }
 
     /**
-     * @return OrderCodeItem[]
+     * @return CodeItem[]
      */
     public function getCodes(): array
     {
@@ -46,7 +47,7 @@ class OrderProductItem
         $items = [];
         foreach ($rows as $row) {
             if (is_array($row)) {
-                $items[] = new OrderCodeItem($row);
+                $items[] = new CodeItem($row);
             }
         }
         return $items;

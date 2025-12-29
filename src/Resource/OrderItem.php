@@ -6,10 +6,12 @@ class OrderItem
 {
     /** @var array */
     private $data;
+    private $links;
 
     public function __construct(array $data)
     {
         $this->data = $data;
+        $this->links = new Links($data['links'] ?? []);
     }
 
     public function getOrderId(): ?string
@@ -42,11 +44,9 @@ class OrderItem
         return isset($this->data['totalPrice']) ? (float) $this->data['totalPrice'] : null;
     }
 
-    public function getLinks(): array
+    public function getLinks(): Links
     {
-        return isset($this->data['links']) && is_array($this->data['links'])
-            ? $this->data['links']
-            : [];
+        return $this->links;
     }
 
     public function toArray(): array
