@@ -4,9 +4,22 @@ namespace CodesWholesaleApi\Resource;
 
 use CodesWholesaleApi\Api\Client;
 use CodesWholesaleApi\Api\ApiException;
+use CodesWholesaleApi\Storage\ContinuationToken\ContinuationTokenStorageInterface;
 
 class Product
 {
+    /** @var ContinuationTokenStorageInterface|null */
+    private static ?ContinuationTokenStorageInterface $defaultContinuationTokenStorage = null;
+
+    /**
+     * Configure default continuation token storage for Product pagination.
+     */
+    public static function configureContinuationTokenStorage(
+        ?ContinuationTokenStorageInterface $storage
+    ): void {
+        self::$defaultContinuationTokenStorage = $storage;
+    }
+
     /**
      * Fetch exactly one page of products.
      *
@@ -39,6 +52,7 @@ class Product
 
     /**
      * Retrieve products (paged) with optional filters.
+     * This method don't remember continuationToken between calls.
      *
      * Callback signature:
      *  function(array $items, ?string $nextToken): void|bool
@@ -103,6 +117,52 @@ class Product
             }
         }
     }
+
+    /**
+     * Wrapper around getAll() that persists continuationToken after each processed page.
+     *
+     * Callback signature:
+     *  function(array $items, ?string $nextToken): void|bool
+     * Return false to stop early (token is still saved for the last processed page).
+     *
+     * @param Client $client
+     * @param callable $callback
+     * @param array $filters
+     * @param int $maxRetry
+     * @return void
+     */
+    public static function getAllWithContinuationStorage(
+        Client $client,
+        callable $callback,
+        array $filters = [],
+        int $maxRetry = 5
+    ): void {
+        if (!self::$defaultContinuationTokenStorage) {
+            throw new \LogicException(
+                'ContinuationTokenStorage is not configured. ' .
+                'Call Product::configureContinuationTokenStorage() first.'
+            );
+        }
+
+        $storage = self::$defaultContinuationTokenStorage;
+        $startToken = $storage->getToken();
+
+        self::getAll(
+            $client,
+            function (array $items, ?string $nextToken) use ($callback, $storage) {
+                $result = $callback($items, $nextToken);
+
+                // checkpoint after successful processing
+                $storage->saveToken($nextToken);
+
+                return $result;
+            },
+            $filters,
+            $startToken,
+            $maxRetry
+        );
+    }
+
 
     /**
      * Retrieve a single product by its ID.

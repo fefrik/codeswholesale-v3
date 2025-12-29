@@ -1,8 +1,8 @@
 <?php
 
-namespace CodesWholesaleApi\Storage;
+namespace CodesWholesaleApi\Storage\OAuth2;
 
-final class TokenSessionStorage implements StorageInterface
+final class TokenSessionOAuthStorage implements OAuthStorageInterface
 {
     private string $sessionKey;
 

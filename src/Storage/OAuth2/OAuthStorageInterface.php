@@ -1,8 +1,8 @@
 <?php
 
-namespace CodesWholesaleApi\Storage;
+namespace CodesWholesaleApi\Storage\OAuth2;
 
-interface StorageInterface
+interface OAuthStorageInterface
 {
     public function saveToken(array $tokenData): void;
     public function getToken(): ?array;      // vrací jen platný token, jinak null

@@ -1,10 +1,10 @@
 <?php
 
-namespace CodesWholesaleApi\Storage;
+namespace CodesWholesaleApi\Storage\OAuth2;
 
 use PDO;
 
-final class TokenDatabaseStorage implements StorageInterface
+final class TokenDatabaseOAuthStorage implements OAuthStorageInterface
 {
     private PDO $db;
     private string $table;
