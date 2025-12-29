@@ -66,7 +66,7 @@ final class TokenDatabaseOAuthStorage implements OAuthStorageInterface
 
     public function clearToken(): void
     {
-        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE client_config_id = :tclient_config_id");
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE client_config_id = :client_config_id");
         $stmt->bindValue(':client_config_id', $this->tokenKey, PDO::PARAM_STR);
         $stmt->execute();
     }
