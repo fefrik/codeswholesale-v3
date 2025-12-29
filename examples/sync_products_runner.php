@@ -1,8 +1,8 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Storage\FileContinuationTokenStorage;
-use CodesWholesaleApi\Storage\FileLastSyncAtStorage;
+use CodesWholesaleApi\Storage\ContinuationToken\FileContinuationTokenStorage;
+use CodesWholesaleApi\Storage\LastSync\FileLastSyncAtStorage;
 use CodesWholesaleApi\Sync\ProductSyncRunner;
 
 $client = require __DIR__ . '/bootstrap.php';
