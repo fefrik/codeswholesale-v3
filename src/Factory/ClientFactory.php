@@ -8,7 +8,7 @@ use CodesWholesaleApi\Storage\OAuth2\TokenDatabaseOAuthStorage;
 use CodesWholesaleApi\Storage\OAuth2\TokenSessionOAuthStorage;
 use PDO;
 
-final class CodesWholesaleClientFactory {
+final class ClientFactory {
 
     // --- Nejkratší cesta (default DB) ---
     public static function live(
