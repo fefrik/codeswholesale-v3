@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesaleApi\Api;
+namespace CodesWholesaleApi\Factory;
 
 use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Storage\OAuth2\OAuthStorageInterface;

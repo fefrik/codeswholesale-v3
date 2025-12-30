@@ -1,6 +1,6 @@
 <?php
 
-namespace CodesWholesaleApi\Api;
+namespace CodesWholesaleApi\Factory;
 
 use CodesWholesaleApi\Auth\TokenNormalizer;
 
