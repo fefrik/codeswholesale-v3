@@ -10,12 +10,12 @@ final class TokenDatabaseOAuthStorage implements OAuthStorageInterface
     private string $table;
     private string $tokenKey;
 
-    public function __construct(PDO $db, string $prefix = '', string $tokenKey = 'codeswholesale-config-id')
+    public function __construct(PDO $db, string $tokenKey = 'codeswholesale-config-id')
     {
         $this->db = $db;
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $this->table = $prefix . 'access_tokens';
+        $this->table = 'access_tokens';
         $this->tokenKey = $tokenKey;
     }
 
