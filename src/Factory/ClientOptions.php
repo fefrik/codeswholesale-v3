@@ -6,8 +6,8 @@ use CodesWholesaleApi\Auth\TokenNormalizer;
 
 final class ClientOptions
 {
-    /** @var TokenNormalizer|null */
-    public $normalizer;
+    /** @var int */
+    public $expirationBuffer;
 
     /** @var int */
     public $timeoutSeconds;
@@ -15,13 +15,27 @@ final class ClientOptions
     /** @var string */
     public $userAgent;
 
+    /** @var TokenNormalizer */
+    public $normalizer;
+
     public function __construct(
-        TokenNormalizer $normalizer = null,
+        int $expirationBuffer = 60,
         int $timeoutSeconds = 20,
         string $userAgent = 'CodesWholesaleClient/1.0'
     ) {
+        $this->expirationBuffer = $expirationBuffer;
+        $this->timeoutSeconds   = $timeoutSeconds;
+        $this->userAgent        = $userAgent;
+        $this->normalizer       = new TokenNormalizer($expirationBuffer);
+    }
+
+    /**
+     * Vlastní normalizer (výjimečně),
+     * např. pokud chcete změnit expirationBuffer dynamicky.
+     */
+    public function withNormalizer(TokenNormalizer $normalizer): self
+    {
         $this->normalizer = $normalizer;
-        $this->timeoutSeconds = $timeoutSeconds;
-        $this->userAgent = $userAgent;
+        return $this;
     }
 }
