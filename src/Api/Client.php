@@ -283,4 +283,5 @@ final class Client
 
         return ($path[0] === '/') ? $path : '/' . $path;
     }
+
 }

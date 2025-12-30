@@ -30,4 +30,14 @@ final class Config
     {
         return $this->getApiBaseUrl() . '/oauth/token';
     }
+
+    public static function live(): self
+    {
+        return new self(false);
+    }
+
+    public static function sandbox(): self
+    {
+        return new self(true);
+    }
 }
