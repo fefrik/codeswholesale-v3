@@ -2,6 +2,7 @@
 
 namespace CodesWholesaleApi\Factory;
 
+use CodesWholesaleApi\Api\Client;
 use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Storage\OAuth2\OAuthStorageInterface;
 use CodesWholesaleApi\Storage\OAuth2\TokenDatabaseOAuthStorage;
