@@ -60,7 +60,7 @@ use CodesWholesaleApi\Auth\TokenNormalizer;
 use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Storage\FileStorage;
 
-$config = new Config([]);
+$config = new Config(true); // true = sandbox mode
 
 $oauthStorage = new FileStorage(__DIR__ . '/oauth_token.json');
 
