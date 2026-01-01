@@ -1,4 +1,4 @@
-# Project name
+# CodesWholesale v3 API – PHP SDK
 
 🌍 **Jazyky:**  
 [English](README.md) | [Česky](README.cs.md)
@@ -47,7 +47,7 @@ PHP SDK pro práci s **CodesWholesale API**
 ## 1) Instalace
 
 ```bash
-composer require your-vendor/codeswholesale-api
+composer require codeswholesale-v3/sdk
 ```
 
 ---
