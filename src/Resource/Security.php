@@ -10,12 +10,12 @@ class Security
      * Check security.
      *
      * Body example:
-     *  [
+     *  {
      *    'customerEmail' => '...',
      *    'customerIpAddress' => '...',
      *    'customerPaymentEmail' => '...',
      *    'customerUserAgent' => '...'
-     *  ]
+     *  }
      *
      * @param Client $client
      * @param array $request
@@ -24,9 +24,7 @@ class Security
     public static function check(Client $client, array $request): ?SecurityResultItem
     {
         self::validateRequest($request);
-
         $data = $client->requestData('POST', '/v3/security', $request);
-
         return !empty($data) ? new SecurityResultItem($data) : null;
     }
 
@@ -40,19 +38,20 @@ class Security
     public static function checkRaw(Client $client, array $request): array
     {
         self::validateRequest($request);
-
         return $client->requestData('POST', '/v3/security', $request);
     }
 
+    /**
+     * Validate request array.
+     *
+     * @param array $request
+     * @return void
+     */
     private static function validateRequest(array $request): void
     {
-        // Nevíme co je povinné, ale minimálně hlídáme, že nepředáváš úplně prázdné.
-        if (empty($request)) {
-            throw new \InvalidArgumentException('Security request body must not be empty.');
+        // customerEmail a customerIpAddress are required
+        if (empty($request['customerEmail']) || empty($request['customerIpAddress'])) {
+            throw new \InvalidArgumentException('Security request must contain customerEmail and customerIpAddress.');
         }
-
-        // Volitelně můžeš zpřísnit:
-        // $allowed = ['customerEmail','customerIpAddress','customerPaymentEmail','customerUserAgent'];
-        // foreach ($request as $k => $v) { if (!in_array($k, $allowed, true)) unset($request[$k]); }
     }
 }
