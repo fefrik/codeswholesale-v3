@@ -15,6 +15,6 @@ class Account
     public static function getCurrent(Client $client): ?AccountItem
     {
         $response = $client->requestData('GET', '/v3/accounts/current');
-        return !empty($data) ? new AccountItem($data) : null;
+        return !empty($response) ? new AccountItem($response) : null;
     }
 }
