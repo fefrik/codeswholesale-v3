@@ -10,11 +10,17 @@ class ProductItem
     public function __construct(array $data)
     {
         $this->data = $data;
+
     }
 
     public function getId(): ?string
     {
         return $this->data['productId'] ?? null;
+    }
+
+    public function getIdentifier(): ?string
+    {
+        return $this->data['identifier'] ?? null;
     }
 
     public function getName(): ?string
@@ -26,6 +32,13 @@ class ProductItem
     {
         return isset($this->data['prices']) && is_array($this->data['prices'])
             ? $this->data['prices']
+            : [];
+    }
+
+    public function getImages(): array
+    {
+        return isset($this->data['images']) && is_array($this->data['images'])
+            ? $this->data['images']
             : [];
     }
 
@@ -60,6 +73,25 @@ class ProductItem
         return isset($this->data['regions']) && is_array($this->data['regions'])
             ? $this->data['regions']
             : [];
+    }
+
+    public function getLanguages(): array
+    {
+        return isset($this->data['languages']) && is_array($this->data['languages'])
+            ? $this->data['languages']
+            : [];
+    }
+
+    public function getBadges(): array
+    {
+        return isset($this->data['badges']) && is_array($this->data['badges'])
+            ? $this->data['badges']
+            : [];
+    }
+
+    public function getRegionDescription(): ?string
+    {
+        return $this->data['regionDescription'] ?? null;
     }
 
     public function getReleaseDateRaw(): ?string
