@@ -3,6 +3,7 @@
 namespace CodesWholesaleApi\Resource;
 
 use CodesWholesaleApi\Api\Client;
+use Exception;
 
 class CodeItem
 {
@@ -64,7 +65,7 @@ class CodeItem
      * @param string $baseUrl Base URL to remove from href
      *
      * @return string Full path of saved image
-     * @throws Exception If the code is not an image or download fails
+     * @throws Exception
      */
     public function saveImageBase64(Client $client, string $saveDir = __DIR__ . '/codes', string $baseUrl = ''): string {
 
@@ -72,30 +73,25 @@ class CodeItem
             throw new Exception("Only image codes can be downloaded.");
         }
 
-        $links = $this->getLinks();
-        $link = $links->first()->getHref();
-        if (empty($link)) {
-            throw new Exception("No link found for this image code.");
-        }
-        $endpoint = $baseUrl ? str_replace($baseUrl, '', $link) : $link;
-        $data = $client->requestData('GET', $endpoint);
-
-        if (empty($data['filename']) || empty($data['code'])) {
-            throw new Exception("Invalid API response for image code.");
+        if (!$this->getCode()) {
+            throw new Exception("Download link not found for the image code.");
         }
 
-        if (!is_dir($saveDir)) {
-            mkdir($saveDir, 0755, true);
-        }
+        $fullPath = self::prepareDirectory($saveDir, $this->getFileName());
+        $result = file_put_contents($fullPath, base64_decode($this->getCode()));
 
-        $filepath = rtrim($saveDir, '/') . '/' . $data['filename'];
-        $decoded = base64_decode($data['code']);
-
-        if ($decoded === false) {
-            throw new Exception("Failed to decode base64 image data.");
+        if (!$result) {
+            throw new Exception("Not able to write image code!");
         }
-        file_put_contents($filepath, $decoded);
-        return $filepath;
+        return $fullPath;
+    }
+
+    private static function prepareDirectory($whereToSaveDirectory, $fileName): string
+    {
+        if (!file_exists($whereToSaveDirectory)) {
+            mkdir($whereToSaveDirectory, 0755, true);
+        }
+        return $whereToSaveDirectory . "/" . $fileName;
     }
 
     public function toArray(): array { return $this->data; }

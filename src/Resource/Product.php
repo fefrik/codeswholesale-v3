@@ -39,6 +39,11 @@ class Product
         $data = $client->requestData('GET', '/v3/products', null, $query);
 
         $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
+        foreach ($items as $key => $itemData) {
+            if (is_array($itemData)) {
+                $items[$key] = new ProductItem($itemData);
+            }
+        }
         $token = isset($data['continuationToken']) && is_string($data['continuationToken'])
             ? $data['continuationToken']
             : null;
