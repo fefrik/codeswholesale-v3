@@ -4,14 +4,9 @@ namespace CodesWholesaleApi\Resource;
 
 final class OrderProductItem extends Resource
 {
-    private Links $links;
-
     public function __construct(\stdClass $data)
     {
         parent::__construct($data);
-
-        $rows = (isset($data->links) && is_array($data->links)) ? $data->links : [];
-        $this->links = new Links($rows);
     }
 
     public function getProductId(): ?string
@@ -29,9 +24,14 @@ final class OrderProductItem extends Resource
         return $this->float('unitPrice');
     }
 
-    public function getLinks(): Links
+    /** @return array<int, LinkItem> */
+    public function getLinks(): array
     {
-        return $this->links;
+        $links = [];
+        foreach ($this->list('links') as $linkData) {
+            $links[] = new LinkItem($linkData);
+        }
+        return $links;
     }
 
     /**
@@ -39,15 +39,10 @@ final class OrderProductItem extends Resource
      */
     public function getCodes(): array
     {
-        $rows = (isset($this->data->codes) && is_array($this->data->codes)) ? $this->data->codes : [];
-
         $items = [];
-        foreach ($rows as $row) {
-            if ($row instanceof \stdClass) {
-                $items[] = new CodeItem($row);
-            }
+        foreach ($this->list('codes') as $row) {
+            $items[] = new CodeItem($row);
         }
-
         return $items;
     }
 }

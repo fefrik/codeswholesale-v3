@@ -35,7 +35,9 @@ final class ProductItem extends Resource
     public function getImages(): array
     {
         return array_map(
-            function (\stdClass $i) { return new ImageItem($i); },
+            function (\stdClass $i) {
+                return new ImageItem($i);
+            },
             $this->list('images')
         );
     }
@@ -61,7 +63,9 @@ final class ProductItem extends Resource
     public function getPrices(): array
     {
         return array_map(
-            function (\stdClass $p) { return new PriceItem($p); },
+            function (\stdClass $p) {
+                return new PriceItem($p);
+            },
             $this->list('prices')
         );
     }

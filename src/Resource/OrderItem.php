@@ -4,14 +4,10 @@ namespace CodesWholesaleApi\Resource;
 
 final class OrderItem extends Resource
 {
-    private Links $links;
 
     public function __construct(\stdClass $data)
     {
         parent::__construct($data);
-
-        $rows = (isset($data->links) && is_array($data->links)) ? $data->links : [];
-        $this->links = new Links($rows);
     }
 
     public function getOrderId(): ?string
@@ -44,8 +40,14 @@ final class OrderItem extends Resource
         return $this->float('totalPrice');
     }
 
-    public function getLinks(): Links
+    /** @return array<int, LinkItem> */
+    public function getLinks(): array
     {
-        return $this->links;
+        return array_map(
+            function (\stdClass $p) {
+                return new LinkItem($p);
+            },
+            $this->list('links')
+        );
     }
 }

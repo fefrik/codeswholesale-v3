@@ -10,16 +10,20 @@ final class CodeItem extends Resource
     private const CODE_IMAGE = 'CODE_IMAGE';
     private const PRE_ORDER  = 'PRE_ORDER';
 
-    /** @var Links */
-    private $links;
-
     public function __construct(\stdClass $data)
     {
         parent::__construct($data);
+    }
 
-        // links může být stdClass nebo array nebo nemusí být vůbec
-        $linksData = $this->obj('links');
-        $this->links = new Links($linksData ?: new \stdClass());
+    /** @return array<int, LinkItem> */
+    public function getLinks(): array
+    {
+        return array_map(
+            function (\stdClass $p) {
+                return new LinkItem($p);
+            },
+            $this->list('links')
+        );
     }
 
     /**
@@ -27,10 +31,7 @@ final class CodeItem extends Resource
      *
      * @return bool True if code type is text
      */
-    public function isText(): bool
-    {
-        return $this->getCodeType() === self::CODE_TEXT;
-    }
+    public function isText(): bool { return $this->getCodeType() === self::CODE_TEXT; }
 
 
     /**
@@ -38,10 +39,7 @@ final class CodeItem extends Resource
      *
      * @return bool True if code type is image
      */
-    public function isImage(): bool
-    {
-        return $this->getCodeType() === self::CODE_IMAGE;
-    }
+    public function isImage(): bool { return $this->getCodeType() === self::CODE_IMAGE; }
 
     /**
      * Check if the code is a pre-order code
@@ -49,9 +47,7 @@ final class CodeItem extends Resource
      * @return bool True if code type is pre-order
      */
     public function isPreOrder(): bool
-    {
-        return $this->getCodeType() === self::PRE_ORDER;
-    }
+    { return $this->getCodeType() === self::PRE_ORDER; }
 
     /**
      * Get the id for the code
@@ -69,11 +65,6 @@ final class CodeItem extends Resource
      */
     public function getCode(): ?string { return $this->str('code'); }
     public function getFilename(): ?string { return $this->str('filename'); }
-
-    public function getLinks(): Links
-    {
-        return $this->links;
-    }
 
     /**
      * Save image code as a file
@@ -101,6 +92,7 @@ final class CodeItem extends Resource
             throw new RuntimeException('Filename not found for the image code.');
         }
 
+        $fileName = basename($fileName);
         $fullPath = self::prepareDirectory($saveDir, $fileName);
 
         $decoded = base64_decode($content, true);
@@ -108,9 +100,7 @@ final class CodeItem extends Resource
             throw new RuntimeException('Invalid base64 content for image code.');
         }
 
-        $result = file_put_contents($fullPath, $decoded);
-
-        if ($result === false) {
+        if (file_put_contents($fullPath, $decoded) === false) {
             throw new RuntimeException("Not able to write image code!");
         }
         return $fullPath;
