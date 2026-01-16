@@ -163,7 +163,7 @@ final class Client
             );
         }
 
-        return new ApiResponse($http, json);
+        return new ApiResponse($http, $json);
     }
 
     // -------------------------
@@ -237,7 +237,7 @@ final class Client
         string $method,
         string $url,
         array $headers,
-        array $body = null,
+        ?array $body = null,
         array $query = []
     ): HttpResponse {
         if (!empty($query)) {
@@ -277,11 +277,12 @@ final class Client
             throw new \RuntimeException("HTTP request failed: cURL error {$errno}: {$error}");
         }
 
+        // ✅ JSON decode: akceptuj object i array, a hlídej json_last_error
         $json = null;
         $trimmed = trim((string) $raw);
         if ($trimmed !== '') {
-            $decoded = json_decode($trimmed);
-            if (is_array($decoded)) {
+            $decoded = json_decode($trimmed); // vrací stdClass nebo array
+            if (json_last_error() === JSON_ERROR_NONE) {
                 $json = $decoded;
             }
         }
