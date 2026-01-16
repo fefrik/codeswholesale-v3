@@ -1,22 +1,38 @@
 <?php
 
-namespace CodesWholesaleApi;
+namespace CodesWholesaleApi\Sdk;
 
+use CodesWholesaleApi\Api\AccountApi;
 use CodesWholesaleApi\Api\Client;
-use CodesWholesaleApi\Sdk\Endpoints\AccountEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\CodeEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\LanguageEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\OrderEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\PlatformEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\ProductEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\RegionEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\SecurityEndpoint;
-use CodesWholesaleApi\Sdk\Endpoints\TerritoryEndpoint;
+use CodesWholesaleApi\Api\CodesApi;
+use CodesWholesaleApi\Api\LanguagesApi;
+use CodesWholesaleApi\Api\OrdersApi;
+use CodesWholesaleApi\Api\PlatformsApi;
+use CodesWholesaleApi\Api\ProductDescriptionApi;
+use CodesWholesaleApi\Api\ProductImagesApi;
+use CodesWholesaleApi\Api\ProductsApi;
+use CodesWholesaleApi\Api\RegionsApi;
+use CodesWholesaleApi\Api\SecurityApi;
+use CodesWholesaleApi\Api\TerritoriesApi;
 
 final class Sdk
 {
-    /** @var Client */
     private Client $client;
+
+    // volitelně cachujeme instance, ať je nevytváříš pořád dokola
+    private ?ProductsApi $products = null;
+    private ?OrdersApi $orders = null;
+    private ?CodesApi $codes = null;
+    private ?AccountApi $account = null;
+    private ?SecurityApi $security = null;
+
+    private ?PlatformsApi $platforms = null;
+    private ?RegionsApi $regions = null;
+    private ?LanguagesApi $languages = null;
+    private ?TerritoriesApi $territories = null;
+
+    private ?ProductDescriptionApi $productDescriptions = null;
+    private ?ProductImagesApi $productImages = null;
 
     public function __construct(Client $client)
     {
@@ -28,14 +44,58 @@ final class Sdk
         return $this->client;
     }
 
-    public function product(): ProductEndpoint { return new ProductEndpoint($this->client); }
-    public function orders(): OrderEndpoint { return new OrderEndpoint($this->client); }
-    public function codes(): CodeEndpoint { return new CodeEndpoint($this->client); }
-    public function account(): AccountEndpoint { return new AccountEndpoint($this->client); }
-    public function security(): SecurityEndpoint { return new SecurityEndpoint($this->client); }
+    public function products(): ProductsApi
+    {
+        return $this->products ?: ($this->products = new ProductsApi($this->client));
+    }
 
-    public function platforms(): PlatformEndpoint { return new PlatformEndpoint($this->client); }
-    public function regions(): RegionEndpoint { return new RegionEndpoint($this->client); }
-    public function languages(): LanguageEndpoint { return new LanguageEndpoint($this->client); }
-    public function territory(): TerritoryEndpoint { return new TerritoryEndpoint($this->client); }
+    public function orders(): OrdersApi
+    {
+        return $this->orders ?: ($this->orders = new OrdersApi($this->client));
+    }
+
+    public function codes(): CodesApi
+    {
+        return $this->codes ?: ($this->codes = new CodesApi($this->client));
+    }
+
+    public function account(): AccountApi
+    {
+        return $this->account ?: ($this->account = new AccountApi($this->client));
+    }
+
+    public function security(): SecurityApi
+    {
+        return $this->security ?: ($this->security = new SecurityApi($this->client));
+    }
+
+    public function platforms(): PlatformsApi
+    {
+        return $this->platforms ?: ($this->platforms = new PlatformsApi($this->client));
+    }
+
+    public function regions(): RegionsApi
+    {
+        return $this->regions ?: ($this->regions = new RegionsApi($this->client));
+    }
+
+    public function languages(): LanguagesApi
+    {
+        return $this->languages ?: ($this->languages = new LanguagesApi($this->client));
+    }
+
+    public function territories(): TerritoriesApi
+    {
+        return $this->territories ?: ($this->territories = new TerritoriesApi($this->client));
+    }
+
+    public function productDescriptions(): ProductDescriptionApi
+    {
+        return $this->productDescriptions ?: ($this->productDescriptions = new ProductDescriptionApi($this->client));
+    }
+
+    public function productImages(): ProductImagesApi
+    {
+        return $this->productImages ?: ($this->productImages = new ProductImagesApi($this->client));
+    }
 }

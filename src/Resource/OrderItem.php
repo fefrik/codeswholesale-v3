@@ -2,55 +2,50 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class OrderItem
+final class OrderItem extends Resource
 {
-    /** @var array */
-    private $data;
-    private $links;
+    private Links $links;
 
-    public function __construct(array $data)
+    public function __construct(\stdClass $data)
     {
-        $this->data = $data;
-        $this->links = new Links($data['links'] ?? []);
+        parent::__construct($data);
+
+        $rows = (isset($data->links) && is_array($data->links)) ? $data->links : [];
+        $this->links = new Links($rows);
     }
 
     public function getOrderId(): ?string
     {
-        return $this->data['orderId'] ?? null;
+        return $this->str('orderId');
     }
 
     public function getClientOrderId(): ?string
     {
-        return $this->data['clientOrderId'] ?? null;
+        return $this->str('clientOrderId');
     }
 
     public function getIdentifier(): ?string
     {
-        return $this->data['identifier'] ?? null;
+        return $this->str('identifier');
     }
 
     public function getStatus(): ?string
     {
-        return $this->data['status'] ?? null;
+        return $this->str('status');
     }
 
     public function getCreatedOn(): ?string
     {
-        return $this->data['createdOn'] ?? null;
+        return $this->str('createdOn');
     }
 
     public function getTotalPrice(): ?float
     {
-        return isset($this->data['totalPrice']) ? (float) $this->data['totalPrice'] : null;
+        return $this->float('totalPrice');
     }
 
     public function getLinks(): Links
     {
         return $this->links;
-    }
-
-    public function toArray(): array
-    {
-        return $this->data;
     }
 }

@@ -1,17 +1,18 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Code;
+use CodesWholesaleApi\Api\CodesApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
 $codeId = $argv[1] ?? 'CODE_ID_HERE';
 
-$code = Code::getById($client, $codeId);
+$codesApi = new CodesApi($client);
+$code = $codesApi->getById($codeId);
 
-if (!$code) {
-    echo "Not found\n";
-    exit(0);
+if ($code === null) {
+    echo "Code not found." . PHP_EOL;
+    exit(1);
 }
 
 echo $code->getCodeType() . PHP_EOL;

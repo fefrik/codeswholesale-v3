@@ -1,23 +1,31 @@
 <?php
 
-namespace CodesWholesaleApi\Resource;
+namespace CodesWholesaleApi\Api;
 
-use CodesWholesaleApi\Api\Client;
-use CodesWholesaleApi\Api\ApiException;
+use CodesWholesaleApi\Resource\ProductItem;
 use CodesWholesaleApi\Storage\ContinuationToken\ContinuationTokenStorageInterface;
 
-class Product
+final class ProductsApi
 {
-    /** @var ContinuationTokenStorageInterface|null */
-    private static ?ContinuationTokenStorageInterface $defaultContinuationTokenStorage = null;
+    public const PRODUCTS_ENDPOINT = '/v3/products';
 
-    /**
-     * Configure default continuation token storage for Product pagination.
-     */
-    public static function configureContinuationTokenStorage(
-        ?ContinuationTokenStorageInterface $storage
-    ): void {
-        self::$defaultContinuationTokenStorage = $storage;
+    /** @var Client */
+    private Client $client;
+
+    /** @var ContinuationTokenStorageInterface|null */
+    private ?ContinuationTokenStorageInterface $continuationTokenStorage;
+
+    public function __construct(Client $client, ?ContinuationTokenStorageInterface $continuationTokenStorage = null)
+    {
+        $this->client = $client;
+        $this->continuationTokenStorage = $continuationTokenStorage;
+    }
+
+    public function withContinuationTokenStorage(?ContinuationTokenStorageInterface $storage): self
+    {
+        $clone = clone $this;
+        $clone->continuationTokenStorage = $storage;
+        return $clone;
     }
 
     /**
@@ -29,23 +37,27 @@ class Product
      *  - updatedSince: string (ISO-8601) mutually exclusive with createdSince
      *  - continuationToken: string
      *
-     * @return array{items: array, continuationToken: ?string, raw: array}
+     * @param array $query
+     * @return array{items: array<int, ProductItem>, continuationToken: ?string, raw: \stdClass}
      */
-    public static function getPage(Client $client, array $query = []): array
+    public function getPage(array $query = []): array
     {
-        self::validateFilters($query);
-        $query = self::normalizeQuery($query);
+        $this->validateFilters($query);
+        $query = $this->normalizeQuery($query);
 
-        $data = $client->requestData('GET', '/v3/products', null, $query);
+        $data = $this->client->requestData('GET', self::PRODUCTS_ENDPOINT, null, $query);
 
-        $items = isset($data['items']) && is_array($data['items']) ? $data['items'] : [];
-        foreach ($items as $key => $itemData) {
-            if (is_array($itemData)) {
-                $items[$key] = new ProductItem($itemData);
+        $itemsRaw = (isset($data->items) && is_array($data->items)) ? $data->items : [];
+        $items = [];
+
+        foreach ($itemsRaw as $row) {
+            if ($row instanceof \stdClass) {
+                $items[] = new ProductItem($row);
             }
         }
-        $token = isset($data['continuationToken']) && is_string($data['continuationToken'])
-            ? $data['continuationToken']
+
+        $token = (isset($data->continuationToken) && is_string($data->continuationToken))
+            ? $data->continuationToken
             : null;
 
         return [
@@ -57,14 +69,19 @@ class Product
 
     /**
      * Retrieve products (paged) with optional filters.
-     * This method don't remember continuationToken between calls.
+     * This method does NOT remember continuationToken between calls.
      *
      * Callback signature:
-     *  function(array $items, ?string $nextToken): void|bool
+     *  function(array<int, ProductItem> $items, ?string $nextToken): void|bool
      * Return false to stop early.
+     *
+     * @param callable $callback
+     * @param array $filters
+     * @param string|null $continuationToken
+     * @param int $maxRetry
+     * @return void
      */
-    public static function getAll(
-        Client $client,
+    public function getAll(
         callable $callback,
         array $filters = [],
         ?string $continuationToken = null,
@@ -76,25 +93,22 @@ class Product
             );
         }
 
-        self::validateFilters($filters);
+        $this->validateFilters($filters);
 
         $retry = 0;
 
         while (true) {
             try {
                 $query = $filters;
-
                 if ($continuationToken) {
                     $query['continuationToken'] = $continuationToken;
                 }
 
-                $page = self::getPage($client, $query);
+                $page = $this->getPage($query);
 
-                if (!empty($page['items'])) {
-                    $result = $callback($page['items'], $page['continuationToken']);
-                    if ($result === false) {
-                        return;
-                    }
+                $result = call_user_func($callback, $page['items'], $page['continuationToken']);
+                if ($result === false) {
+                    return;
                 }
 
                 $continuationToken = $page['continuationToken'];
@@ -105,7 +119,6 @@ class Product
                 }
 
                 usleep(200000);
-
             } catch (ApiException $e) {
                 $retry++;
 
@@ -127,35 +140,26 @@ class Product
      * Wrapper around getAll() that persists continuationToken after each processed page.
      *
      * Callback signature:
-     *  function(array $items, ?string $nextToken): void|bool
+     *  function(array<int, ProductItem> $items, ?string $nextToken): void|bool
      * Return false to stop early (token is still saved for the last processed page).
-     *
-     * @param Client $client
-     * @param callable $callback
-     * @param array $filters
-     * @param int $maxRetry
-     * @return void
      */
-    public static function getAllWithContinuationStorage(
-        Client $client,
+    public function getAllWithContinuationStorage(
         callable $callback,
         array $filters = [],
         int $maxRetry = 5
     ): void {
-        if (!self::$defaultContinuationTokenStorage) {
+        if (!$this->continuationTokenStorage) {
             throw new \LogicException(
-                'ContinuationTokenStorage is not configured. ' .
-                'Call Product::configureContinuationTokenStorage() first.'
+                'ContinuationTokenStorage is not configured. Pass it to constructor or use withContinuationTokenStorage().'
             );
         }
 
-        $storage = self::$defaultContinuationTokenStorage;
+        $storage = $this->continuationTokenStorage;
         $startToken = $storage->getToken();
 
-        self::getAll(
-            $client,
+        $this->getAll(
             function (array $items, ?string $nextToken) use ($callback, $storage) {
-                $result = $callback($items, $nextToken);
+                $result = call_user_func($callback, $items, $nextToken);
 
                 // checkpoint after successful processing
                 $storage->saveToken($nextToken);
@@ -168,26 +172,29 @@ class Product
         );
     }
 
-
     /**
      * Retrieve a single product by its ID.
      */
-    public static function getById(Client $client, string $productId): ?ProductItem
+    public function getById(string $productId): ?ProductItem
     {
-        $data = $client->requestData('GET', "/v3/products/{$productId}");
-        return !empty($data) ? new ProductItem($data) : null;
+        $data = $this->client->requestData('GET', self::PRODUCTS_ENDPOINT . '/' . $productId);
+
+        if (empty(get_object_vars($data))) {
+            return null;
+        }
+
+        return new ProductItem($data);
     }
 
-    private static function validateFilters(array $filters): void
+    private function validateFilters(array $filters): void
     {
         if (!empty($filters['createdSince']) && !empty($filters['updatedSince'])) {
             throw new \InvalidArgumentException('Filters createdSince and updatedSince are mutually exclusive.');
         }
     }
 
-    private static function normalizeQuery(array $query): array
+    private function normalizeQuery(array $query): array
     {
-        // productIds: pole -> CSV, protože http_build_query by jinak dělalo productIds[0]=...
         if (!empty($query['productIds']) && is_array($query['productIds'])) {
             $query['productIds'] = implode(',', $query['productIds']);
         }

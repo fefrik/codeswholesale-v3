@@ -1,12 +1,13 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\ProductImage;
+use CodesWholesaleApi\Api\ProductImagesApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
 $imageId = $argv[1] ?? 'IMAGE_ID_HERE';
 
-$img = ProductImage::getById($client, $imageId);
-var_export($img ? $img->toArray() : null);
+$productImageApi = new ProductImagesApi($client);
+$productImage = $productImageApi->getById($imageId);
+var_export($productImage ? $productImage->getImage() : null);
 echo PHP_EOL;

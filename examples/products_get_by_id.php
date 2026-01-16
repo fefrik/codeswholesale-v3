@@ -1,18 +1,20 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Product;
+use CodesWholesaleApi\Api\ProductsApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
 $productId = $argv[1] ?? 'PRODUCT_ID_HERE';
 
-$p = Product::getById($client, $productId);
+$productsApi = new ProductsApi($client);
+$product = $productsApi->getById($productId);
 
-if (!$p) {
+if ($product === null) {
     echo "Not found\n";
     exit(0);
 }
 
-var_export($p->toArray());
+var_export($product->toArray());
+
 echo PHP_EOL;

@@ -2,43 +2,30 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class SecurityResultItem
+final class SecurityResultItem extends Resource
 {
-    /** @var array */
-    private $data;
-
-    public function __construct(array $data)
-    {
-        $this->data = $data;
-    }
-
     public function isDomainBlacklisted(): ?bool
     {
-        return isset($this->data['domainBlacklisted']) ? (bool) $this->data['domainBlacklisted'] : null;
+        return $this->bool('domainBlacklisted');
     }
 
     public function isIpBlacklisted(): ?bool
     {
-        return isset($this->data['ipBlacklisted']) ? (bool) $this->data['ipBlacklisted'] : null;
+        return $this->bool('ipBlacklisted');
     }
 
     public function isIpTor(): ?bool
     {
-        return isset($this->data['ipTor']) ? (bool) $this->data['ipTor'] : null;
+        return $this->bool('ipTor');
     }
 
     public function getRiskScore(): ?int
     {
-        return isset($this->data['riskScore']) ? (int) $this->data['riskScore'] : null;
+        return $this->int('riskScore');
     }
 
     public function isSubDomain(): ?bool
     {
-        return isset($this->data['subDomain']) ? (bool) $this->data['subDomain'] : null;
-    }
-
-    public function toArray(): array
-    {
-        return $this->data;
+        return $this->bool('subDomain');
     }
 }

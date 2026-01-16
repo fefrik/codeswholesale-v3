@@ -5,7 +5,7 @@ namespace CodesWholesaleApi\Storage\ContinuationToken;
 final class FileContinuationTokenStorage implements ContinuationTokenStorageInterface
 {
     /** @var string */
-    private $file;
+    private string $file;
 
     public function __construct(string $file = null)
     {

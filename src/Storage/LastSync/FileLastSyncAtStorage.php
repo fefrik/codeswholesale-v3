@@ -5,7 +5,7 @@ namespace CodesWholesaleApi\Storage\LastSync;
 final class FileLastSyncAtStorage implements LastSyncAtStorageInterface
 {
     /** @var string */
-    private $file;
+    private string $file;
 
     public function __construct(string $file = null)
     {

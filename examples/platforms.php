@@ -1,10 +1,12 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Platform;
+use CodesWholesaleApi\Api\PlatformsApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
-foreach (Platform::getAll($client) as $p) {
+$platformsApi = new PlatformsApi($client);
+$platforms = $platformsApi->getAll();
+foreach ($platforms as $p) {
     echo $p->getName() . PHP_EOL;
 }

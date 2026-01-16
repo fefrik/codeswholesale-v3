@@ -7,22 +7,28 @@ use CodesWholesaleApi\Http\HttpResponse;
 final class ApiResponse
 {
     /** @var HttpResponse */
-    private $http;
+    private HttpResponse $http;
 
-    /** @var array */
-    private $data;
+    /** @var \stdClass */
+    private \stdClass $data;
 
-    public function __construct(HttpResponse $http, array $data)
+    public function __construct(HttpResponse $http, \stdClass $data)
     {
         $this->http = $http;
         $this->data = $data;
     }
 
-    public function getData(): array
+    /**
+     * Decoded JSON response body (top-level object).
+     */
+    public function getData(): \stdClass
     {
         return $this->data;
     }
 
+    /**
+     * Raw HTTP response wrapper.
+     */
     public function getHttp(): HttpResponse
     {
         return $this->http;

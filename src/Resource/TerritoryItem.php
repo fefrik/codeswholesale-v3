@@ -2,23 +2,10 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class TerritoryItem
+final class TerritoryItem extends Resource
 {
-    /** @var array */
-    private $data;
-
-    public function __construct(array $data)
-    {
-        $this->data = $data;
-    }
-
     public function getTerritory(): ?string
     {
-        return $this->data['territory'] ?? null;
-    }
-
-    public function toArray(): array
-    {
-        return $this->data;
+        return $this->str('territory');
     }
 }

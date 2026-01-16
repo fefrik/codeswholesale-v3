@@ -3,27 +3,18 @@
 namespace CodesWholesaleApi\Sync;
 
 use CodesWholesaleApi\Api\Client;
-use CodesWholesaleApi\Resource\Product;
+use CodesWholesaleApi\Api\ProductsApi;
 use CodesWholesaleApi\Resource\ProductItem;
 use CodesWholesaleApi\Storage\ContinuationToken\ContinuationTokenStorageInterface;
 use CodesWholesaleApi\Storage\LastSync\LastSyncAtStorageInterface;
 
 final class ProductSyncRunner
 {
-    /** @var Client */
-    private $client;
-
-    /** @var ContinuationTokenStorageInterface */
-    private $continuationStorage;
-
-    /** @var LastSyncAtStorageInterface */
-    private $lastSyncStorage;
-
-    /** @var int */
-    private $maxRetry;
-
-    /** @var int */
-    private $sleepBetweenRunsSeconds;
+    private Client $client;
+    private ContinuationTokenStorageInterface $continuationStorage;
+    private LastSyncAtStorageInterface $lastSyncStorage;
+    private int $maxRetry;
+    private int $sleepBetweenRunsSeconds;
 
     public function __construct(
         Client $client,
@@ -56,34 +47,31 @@ final class ProductSyncRunner
             $lastSyncAt = $initialFallbackIso ?: '1970-01-01T00:00:00Z';
         }
 
-        // Důležité: "now" si vezmeme na začátku. Po úspěšném dokončení nastavíme lastSyncAt=now.
-        // Tím minimalizuješ riziko, že ti změny během běhu utečou mezi "od" a "do".
+        // "now" bereme na zacatku, po uspechu nastavime lastSyncAt=now
         $nowUtc = gmdate('c');
 
         $filters = [
             'updatedSince' => $lastSyncAt,
         ];
 
-        // Konfigurace continuation storage pro Product wrapper
-        Product::configureContinuationTokenStorage($this->continuationStorage);
+        $productsApi = (new ProductsApi($this->client))
+            ->withContinuationTokenStorage($this->continuationStorage);
 
-        // Vlastní sync
-        Product::getAllWithContinuationStorage(
-            $this->client,
-            function (array $items) use ($onProduct) {
-                foreach ($items as $row) {
-                    $onProduct(new ProductItem($row));
+        $productsApi->getAllWithContinuationStorage(
+            function (array $items, ?string $nextToken) use ($onProduct) {
+                // $items uz jsou ProductItem[]
+                foreach ($items as $product) {
+                    $onProduct($product);
                 }
             },
             $filters,
             $this->maxRetry
         );
 
-        // Pokud jsme sem došli, sync proběhl celý bez výjimky.
+        // sync dobehl bez vyjimky -> checkpoint
         $this->lastSyncStorage->saveLastSyncAt($nowUtc);
 
-        // continuation token už by měl být smazaný (uložením null),
-        // ale pro jistotu:
+        // pro jistotu vycistime (getAllWithContinuationStorage uklada i null, ale at je to explicitni)
         $this->continuationStorage->clearToken();
 
         if ($this->sleepBetweenRunsSeconds > 0) {
@@ -91,15 +79,32 @@ final class ProductSyncRunner
         }
     }
 
-    /**
-     * Run in a loop every $intervalSeconds (simple daemon-style).
-     * For cron doporučuji volat runOnce() a nechat schedulovat cronem.
-     */
     public function runForever(callable $onProduct, int $intervalSeconds, ?string $initialFallbackIso = null): void
     {
+        if (PHP_SAPI !== 'cli') {
+            throw new \RuntimeException('runForever() must be executed in CLI (worker) mode.');
+        }
+
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(0);
+        }
+
         while (true) {
             $this->runOnce($onProduct, $initialFallbackIso);
             sleep($intervalSeconds);
+        }
+    }
+
+    public function runForSeconds(callable $onProduct, int $seconds, int $intervalSeconds = 0, ?string $initialFallbackIso = null): void
+    {
+        $deadline = time() + $seconds;
+
+        while (time() < $deadline) {
+            $this->runOnce($onProduct, $initialFallbackIso);
+
+            if ($intervalSeconds > 0 && time() < $deadline) {
+                sleep($intervalSeconds);
+            }
         }
     }
 }

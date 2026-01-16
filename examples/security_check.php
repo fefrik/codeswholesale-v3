@@ -1,18 +1,19 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Security;
+use CodesWholesaleApi\Api\SecurityApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
-$result = Security::check($client, [
+$securityCheckApi = new SecurityApi($client);
+$result = $securityCheckApi->check([
     'customerEmail' => 'customer@example.com',
     'customerIpAddress' => '203.0.113.10',
     'customerPaymentEmail' => 'pay@example.com',
     'customerUserAgent' => $_SERVER['HTTP_USER_AGENT'] ?? 'cli',
 ]);
 
-if (!$result) {
+if ($result === null) {
     echo "No result\n";
     exit(0);
 }

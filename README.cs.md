@@ -1,50 +1,28 @@
-# CodesWholesale v3 API – PHP SDK
 
-🌍 **Jazyky:**  
-[English](README.md) | [Česky](README.cs.md)
 
-## Podpořte tento projekt
 
-Tento projekt je zdarma a open-source a takový vždy zůstane.
-
-Pokud vám pomáhá šetřit čas nebo dodávat rychleji, můžete podpořit jeho další vývoj a údržbu prostřednictvím GitHub Sponsors:
-
-➡️ https://github.com/sponsors/fefrik
-
-Děkuji — i malý příspěvek pomáhá udržet projekt při životě! 🚀
-
-> **Upozornění:** Jedná se o komunitně udržovanou integraci, nikoli o oficiální produkt společnosti CodeWholesale  
-> Musíte používat vlastní CodeWholesale API klíč a vlastní účet.
-
-# CodesWholesale API – PHP SDK
-
-PHP SDK pro práci s **CodesWholesale API**  
+PHP SDK pro práci s **CodesWholesale API v3**
 (produkty, objednávky, licenční klíče, synchronizace, bezpečnost).
 
-- ✅ PHP **7.4+**
-- ✅ bez frameworků
-- ✅ automatická OAuth autentizace
-- ✅ bezpečná paginace (resume pomocí continuation tokenu)
-- ✅ připravené pro dlouhé synchronizace a cron běhy
+Navrženo pro reálné e‑commerce integrace a dlouhodobě běžící procesy.
+
+✅ PHP 7.4+  
+✅ Není potřeba žádný framework  
+✅ Automatická OAuth autentizace  
+✅ Bezpečné stránkování (pokračování pomocí continuation tokenu)  
+✅ Navrženo pro dlouhé synchronizace a cron joby
 
 ---
 
-## Obsah
-1. Instalace
-2. Základní konfigurace
-3. Přehled funkcí SDK
-4. Produkty
-5. Synchronizace produktů (reálné časy)
-6. Objednávky
-7. Licenční klíče (Codes)
-8. Account
-9. Bezpečnost (Security)
-10. Statické seznamy
-11. Best practices
+## Požadavky
+
+- PHP **7.4+**
+- rozšíření **cURL**
+- rozšíření **JSON**
 
 ---
 
-## 1) Instalace
+## Instalace
 
 ```bash
 composer require codeswholesale-v3/sdk
@@ -52,148 +30,152 @@ composer require codeswholesale-v3/sdk
 
 ---
 
-## 2) Základní konfigurace
+## Základní použití
+
+### Vytvoření klienta a SDK
 
 ```php
 use CodesWholesaleApi\Api\Client;
-use CodesWholesaleApi\Auth\TokenNormalizer;
 use CodesWholesaleApi\Config\Config;
-use CodesWholesaleApi\Storage\FileStorage;
-
-$config = new Config(true); // true = sandbox mode
+use CodesWholesaleApi\Sdk;
 
 $oauthStorage = new FileStorage(__DIR__ . '/oauth_token.json');
 
 $client = new Client(
-    $config,
+    new Config('https://api.codeswholesale.com'),
     $oauthStorage,
     'CLIENT_ID',
-    'CLIENT_SECRET',
-    new TokenNormalizer()
+    'CLIENT_SECRET'
+);
+
+$sdk = new Sdk($client);
+```
+
+---
+
+## Architektura SDK
+
+```
+Client
+ └── Endpoint (Products, Orders, Codes, …)
+       └── Resource (ProductItem, OrderItem, …)
+```
+
+### Client
+- zajišťuje HTTP komunikaci, OAuth2, retry a chybové stavy
+- **vždy vrací `stdClass`**
+
+### Endpoint
+- reprezentuje skupinu REST endpointů (`/v3/products`, `/v3/orders`, …)
+- převádí odpovědi na **Resource objekty**
+
+### Resource
+- immutable DTO (read‑only)
+- typové gettery
+- žádná business logika
+
+---
+
+## Přehled SDK podle API oblastí
+
+### Produkty
+- seznam produktů (stránkování, pokračování)
+- detail produktu
+- popisy produktů
+- obrázky produktů
+- bezpečná synchronizace velkých katalogů (50k+ produktů)
+
+### Objednávky
+- vytváření objednávek
+- historie objednávek
+- detail objednávky
+- získání licenčních klíčů z objednávky
+
+### Kódy (licenční klíče)
+- získání zakoupených klíčů
+- textové i obrázkové kódy
+- práce s base64 obrázky
+
+### Účet
+- zůstatek účtu
+- informace o účtu
+
+### Bezpečnost
+- kontrola rizik / fraud
+- kontrola IP a domény
+- risk skóre
+
+### Metadata
+- platformy
+- regiony
+- jazyky
+- teritoria
+
+---
+
+## Produkty
+
+### Získání jedné stránky produktů
+
+```php
+$page = $sdk->products()->getPage([
+    'updatedSince' => '2024-01-01T00:00:00Z'
+]);
+
+foreach ($page['items'] as $product) {
+    echo $product->getName();
+}
+```
+
+---
+
+## Iterace všech produktů
+
+```php
+$sdk->products()->getAll(
+    function (array $items) {
+        foreach ($items as $product) {
+            saveProduct($product);
+        }
+    }
 );
 ```
 
 ---
 
-## 3) Přehled funkcí SDK
+## Synchronizace produktů (doporučeno)
 
-### Produkty
-- Product::getAll()
-- Product::getAllWithContinuationStorage()
-- Product::getById()
-
-### Objednávky
-- Orders::getAll()
-- Orders::getById()
-- Orders::create()
-
-### Kódy
-- Codes::getById()
-
-### Account
-- Account::getCurrent()
-
-### Bezpečnost
-- Security::check()
-
-### Statické seznamy
-- Platforms::getAll()
-- Regions::getAll()
-- Languages::getAll()
-- Territory::getAll()
-
----
-
-## 4) Produkty
-
-### Načtení všech produktů
+Bezpečná a obnovitelná synchronizace pomocí continuation tokenů.
 
 ```php
-Product::getAll($client, function (array $items) {
-    foreach ($items as $row) {
-        echo $row['productId'] . PHP_EOL;
-    }
-});
+$runner->runForSeconds(
+    fn(ProductItem $p) => upsertProduct($p),
+    30
+);
 ```
 
----
-
-## 5) Synchronizace produktů
-
-Používej `updatedSince` + `continuationToken`.
-
-Doporučeno spouštět přes cron.
+✔ bezpečné pro web  
+✔ bezpečné pro cron  
+✔ pokračuje přesně tam, kde skončilo
 
 ---
 
-## 6) Objednávky
+## Podpořte tento projekt ❤️
 
-### Vytvoření objednávky
+Tento projekt je **free a open‑source** a takový vždy zůstane.
 
-```php
-$order = Orders::create($client, [
-    'allowPreOrder' => true,
-    'orderId' => 'MY-ORDER-123',
-    'products' => [
-        [
-            'productId' => 'PRODUCT_ID',
-            'quantity' => 1,
-            'price' => 9.99,
-        ],
-    ],
-]);
-```
+Pokud vám pomohl ušetřit čas nebo dodat projekt rychleji,
+můžete podpořit jeho další vývoj přes GitHub Sponsors:
+
+➡️ https://github.com/sponsors/fefrik
+
+Děkujeme — i malý příspěvek pomáhá projekt udržet při životě 🚀
 
 ---
 
-## 7) Licenční klíče
+## Upozornění (Disclaimer)
 
-```php
-$code = Codes::getById($client, 'CODE_ID');
-echo $code->getCode();
-```
+Toto je **komunitně udržovaná integrace** a **nejde o oficiální produkt CodesWholesale**.
 
----
-
-## 8) Account
-
-```php
-$account = Account::getCurrent($client);
-var_export($account->toArray());
-```
-
----
-
-## 9) Bezpečnost
-
-```php
-$result = Security::check($client, [
-    'customerEmail' => 'customer@example.com',
-]);
-```
-
----
-
-## 10) Statické seznamy
-
-```php
-Platforms::getAll($client);
-Regions::getAll($client);
-Languages::getAll($client);
-Territory::getAll($client);
-```
-
----
-
-## 11) Best practices
-
-- continuationToken ≠ business filtr
-- ukládej token až po zpracování stránky
-- odděluj OAuth token a continuation token
-
----
-
-## Závěr
-
-SDK je navrženo pro produkční e‑commerce použití.
-
+Musíte použít **vlastní CodesWholesale API klíč a účet**.
+Veškeré ochranné známky patří jejich vlastníkům.

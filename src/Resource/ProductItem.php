@@ -2,119 +2,121 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class ProductItem
+use CodesWholesaleApi\Resource\Exceptions\NoImagesFoundException;
+
+final class ProductItem extends Resource
 {
-    /** @var array */
-    private $data;
-
-    public function __construct(array $data)
-    {
-        $this->data = $data;
-
-    }
-
     public function getId(): ?string
     {
-        return $this->data['productId'] ?? null;
+        return $this->str('productId');
     }
 
     public function getIdentifier(): ?string
     {
-        return $this->data['identifier'] ?? null;
+        return $this->str('identifier');
     }
 
     public function getName(): ?string
     {
-        return $this->data['name'] ?? null;
+        return $this->str('name');
     }
 
-    public function getPrices(): array
+    public function getStock(): ?int
     {
-        return isset($this->data['prices']) && is_array($this->data['prices'])
-            ? $this->data['prices']
-            : [];
+        return $this->int('quantity');
     }
 
+    public function getPlatform(): ?string
+    {
+        return $this->str('platform');
+    }
+
+    /** @return array<int, ImageItem> */
     public function getImages(): array
     {
-        return isset($this->data['images']) && is_array($this->data['images'])
-            ? $this->data['images']
-            : [];
+        return array_map(
+            function (\stdClass $i) { return new ImageItem($i); },
+            $this->list('images')
+        );
+    }
+
+    /**
+     * @throws NoImagesFoundException
+     */
+    public function getImageUrl(string $format): string
+    {
+        foreach ($this->getImages() as $image) {
+            $fmt = $image->getFormat();
+            $url = $image->getUrl();
+
+            if ($fmt === $format && $url !== '') {
+                return $url;
+            }
+        }
+
+        throw new NoImagesFoundException();
+    }
+
+    /** @return array<int, PriceItem> */
+    public function getPrices(): array
+    {
+        return array_map(
+            function (\stdClass $p) { return new PriceItem($p); },
+            $this->list('prices')
+        );
     }
 
     public function getDefaultPrice(): ?float
     {
         foreach ($this->getPrices() as $price) {
-            if (
-                isset($price['from'], $price['value']) &&
-                (int) $price['from'] === 1
-            ) {
-                return (float) $price['value'];
+            if ($price->getFrom() === 1) {
+                return $price->getValue();
             }
         }
-
         return null;
     }
 
-    public function getStock(): ?int
-    {
-        return isset($this->data['quantity'])
-            ? (int) $this->data['quantity']
-            : null;
-    }
-
-    public function getPlatform(): ?string
-    {
-        return $this->data['platform'] ?? null;
-    }
-
+    /** @return array<int, string> */
     public function getRegions(): array
     {
-        return isset($this->data['regions']) && is_array($this->data['regions'])
-            ? $this->data['regions']
-            : [];
+        // pokud nechceš filtrování na stringy, vrať jen scalarArray('regions')
+        return array_values(array_filter($this->scalarArray('regions'), 'is_string'));
     }
 
+    /** @return array<int, string> */
     public function getLanguages(): array
     {
-        return isset($this->data['languages']) && is_array($this->data['languages'])
-            ? $this->data['languages']
-            : [];
+        return array_values(array_filter($this->scalarArray('languages'), 'is_string'));
     }
 
+    /** @return array<int, string> */
     public function getBadges(): array
     {
-        return isset($this->data['badges']) && is_array($this->data['badges'])
-            ? $this->data['badges']
-            : [];
+        return array_values(array_filter($this->scalarArray('badges'), 'is_string'));
     }
 
     public function getRegionDescription(): ?string
     {
-        return $this->data['regionDescription'] ?? null;
+        return $this->str('regionDescription');
     }
 
     public function getReleaseDateRaw(): ?string
     {
-        return $this->data['releaseDate'] ?? null;
+        return $this->str('releaseDate');
     }
 
     public function getReleaseDateFormatted(string $format = 'd/m/Y'): ?string
     {
-        if (empty($this->data['releaseDate'])) {
+        $raw = $this->getReleaseDateRaw();
+        if (!$raw) {
             return null;
         }
 
-        $timestamp = strtotime($this->data['releaseDate']);
+        $timestamp = strtotime($raw);
         if ($timestamp === false) {
             return null;
         }
 
         return date($format, $timestamp);
-    }
-
-    public function toArray(): array
-    {
-        return $this->data;
     }
 }

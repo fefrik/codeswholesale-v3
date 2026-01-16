@@ -7,7 +7,7 @@ use CodesWholesaleApi\Http\HttpResponse;
 final class ApiException extends \RuntimeException
 {
     /** @var HttpResponse */
-    private $response;
+    private HttpResponse $response;
 
     public function __construct(HttpResponse $response, string $message)
     {

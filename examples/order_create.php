@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Order;
+use CodesWholesaleApi\Api\OrdersApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
@@ -18,9 +18,10 @@ $request = [
     ],
 ];
 
-$order = Order::create($client, $request);
+$ordersApi = new OrdersApi($client);
+$order = $ordersApi->create($request);
 
-if (!$order) {
+if ($order === null) {
     echo "Create failed\n";
     exit(1);
 }

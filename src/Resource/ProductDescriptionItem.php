@@ -2,127 +2,127 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class ProductDescriptionItem
+final class ProductDescriptionItem extends Resource
 {
-    /** @var array */
-    private $data;
-
-    public function __construct(array $data)
-    {
-        $this->data = $data;
-    }
-
     public function getProductId(): ?string
     {
-        return $this->data['productId'] ?? null;
+        return $this->str('productId');
     }
 
     public function getPlatform(): ?string
     {
-        return $this->data['platform'] ?? null;
+        return $this->str('platform');
     }
 
     public function getOfficialTitle(): ?string
     {
-        return $this->data['officialTitle'] ?? null;
+        return $this->str('officialTitle');
     }
 
     public function getCategory(): ?string
     {
-        return $this->data['category'] ?? null;
+        return $this->str('category');
     }
 
     public function getDeveloperName(): ?string
     {
-        return $this->data['developerName'] ?? null;
+        return $this->str('developerName');
     }
 
     public function getDeveloperHomepage(): ?string
     {
-        return $this->data['developerHomepage'] ?? null;
+        return $this->str('developerHomepage');
     }
 
+    /**
+     * @return array
+     */
     public function getEans(): array
     {
-        return isset($this->data['eans']) && is_array($this->data['eans']) ? $this->data['eans'] : [];
+        return $this->scalarArray('eans');
     }
 
+    /**
+     * @return array
+     */
     public function getEditions(): array
     {
-        return isset($this->data['editions']) && is_array($this->data['editions']) ? $this->data['editions'] : [];
+        return $this->scalarArray('editions');
     }
 
+    /**
+     * @return array
+     */
     public function getExtensionPacks(): array
     {
-        return isset($this->data['extensionPacks']) && is_array($this->data['extensionPacks'])
-            ? $this->data['extensionPacks']
-            : [];
+        return $this->scalarArray('extensionPacks');
     }
 
     public function getKeywords(): ?string
     {
-        return $this->data['keywords'] ?? null;
+        return $this->str('keywords');
     }
 
     public function getMinimumRequirements(): ?string
     {
-        return $this->data['minimumRequirements'] ?? null;
+        return $this->str('minimumRequirements');
     }
 
     public function getRecommendedRequirements(): ?string
     {
-        return $this->data['recommendedRequirements'] ?? null;
+        return $this->str('recommendedRequirements');
     }
 
+    /**
+     * @return array
+     */
     public function getInTheGameLanguages(): array
     {
-        return isset($this->data['inTheGameLanguages']) && is_array($this->data['inTheGameLanguages'])
-            ? $this->data['inTheGameLanguages']
-            : [];
+        return $this->scalarArray('inTheGameLanguages');
     }
 
+    /**
+     * @return array
+     */
     public function getLocalizedTitles(): array
     {
-        return isset($this->data['localizedTitles']) && is_array($this->data['localizedTitles'])
-            ? $this->data['localizedTitles']
-            : [];
+        return $this->scalarArray('localizedTitles');
     }
 
+    /**
+     * @return array
+     */
     public function getFactSheets(): array
     {
-        return isset($this->data['factSheets']) && is_array($this->data['factSheets'])
-            ? $this->data['factSheets']
-            : [];
+        return $this->scalarArray('factSheets');
     }
 
+    /**
+     * @return array
+     */
     public function getPhotos(): array
     {
-        return isset($this->data['photos']) && is_array($this->data['photos'])
-            ? $this->data['photos']
-            : [];
+        return $this->scalarArray('photos');
     }
 
+    /**
+     * @return array
+     */
     public function getVideos(): array
     {
-        return isset($this->data['videos']) && is_array($this->data['videos'])
-            ? $this->data['videos']
-            : [];
+        return $this->scalarArray('videos');
     }
 
+    /**
+     * @return array
+     */
     public function getReleases(): array
     {
-        return isset($this->data['releases']) && is_array($this->data['releases'])
-            ? $this->data['releases']
-            : [];
+        return $this->scalarArray('releases');
     }
 
     public function getPegiRating(): ?string
     {
-        return $this->data['pegirating'] ?? null;
-    }
-
-    public function toArray(): array
-    {
-        return $this->data;
+        return $this->str('pegirating');
     }
 }

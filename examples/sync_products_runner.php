@@ -17,7 +17,5 @@ $runner = new ProductSyncRunner($client, $continuation, $lastSync, 5);
 
 // Jednorázový běh (ideální pro cron)
 $runner->runOnce(function ($product) {
-    // $product je ProductItem
-    // TODO: upsert do DB
-    // echo $product->getId() . " " . $product->getName() . PHP_EOL;
+    echo $product->getId() . ' - ' . $product->getName() . PHP_EOL;
 }, '2025-12-20T00:00:00Z'); // fallback pro úplně první běh

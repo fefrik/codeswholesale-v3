@@ -3,36 +3,38 @@
 namespace CodesWholesaleApi\Service;
 
 use CodesWholesaleApi\Api\Client;
-use CodesWholesaleApi\Resource\Code;
+use CodesWholesaleApi\Api\OrdersApi;
+use CodesWholesaleApi\Api\CodesApi;
 use CodesWholesaleApi\Resource\CodeItem;
-use CodesWholesaleApi\Resource\Order;
 use CodesWholesaleApi\Resource\OrderDetailItem;
 
-class OrderFulfillmentService
+final class OrderFulfillmentService
 {
-    /** @var Client */
-    private $client;
+    private Client $client;
 
-    /** @var string[] */
-    private $readyStatuses;
+    /** @var array<int, string> */
+    private array $readyStatuses;
 
-    /** @var int */
-    private $maxStatusPollAttempts;
+    private int $maxStatusPollAttempts;
+    private int $pollSleepSeconds;
 
-    /** @var int */
-    private $pollSleepSeconds;
+    private OrdersApi $ordersApi;
+    private CodesApi $codesApi;
 
     public function __construct(
         Client $client,
-        array  $readyStatuses = ['READY', 'PREPARED', 'COMPLETED', 'FULFILLED'],
-        int    $maxStatusPollAttempts = 10,
-        int    $pollSleepSeconds = 2
-    )
-    {
+        array $readyStatuses = ['READY', 'PREPARED', 'COMPLETED', 'FULFILLED'],
+        int $maxStatusPollAttempts = 10,
+        int $pollSleepSeconds = 2
+    ) {
         $this->client = $client;
         $this->readyStatuses = $readyStatuses;
         $this->maxStatusPollAttempts = $maxStatusPollAttempts;
         $this->pollSleepSeconds = $pollSleepSeconds;
+
+        // můžeš i injectnout zvenku, ale tohle je nejmenší změna
+        $this->ordersApi = new OrdersApi($client);
+        $this->codesApi = new CodesApi($client);
     }
 
     /**
@@ -41,15 +43,11 @@ class OrderFulfillmentService
      * @param array $orderRequest Body for POST /v3/orders
      * @param bool $waitUntilReady If true, will poll order detail until status is ready or attempts exceeded
      *
-     * @return array{order: OrderDetailItem, codes: CodeItem[]}
+     * @return array{order: OrderDetailItem, codes: array<int, CodeItem>}
      */
     public function createAndFetchCodes(array $orderRequest, bool $waitUntilReady = true): array
     {
-        $order = Order::create($this->client, $orderRequest);
-
-        if (!$order) {
-            throw new \RuntimeException('Order creation returned empty response.');
-        }
+        $order = $this->ordersApi->create($orderRequest);
 
         // Po create často už dostaneš i codes, ale raději to ověříme přes detail a status.
         if ($waitUntilReady) {
@@ -62,7 +60,7 @@ class OrderFulfillmentService
         $codes = $this->extractCodesFromOrder($order);
 
         // 2) Volitelné: pokud by někdy v detailu code.value nebylo (jen codeId),
-        // můžeš si je “dofetchovat” přes /v3/codes/{codeId}. Nechávám jako doplňek:
+        // dofetch přes /v3/codes/{codeId}
         $codes = $this->ensureCodeValues($codes);
 
         return [
@@ -71,9 +69,6 @@ class OrderFulfillmentService
         ];
     }
 
-    /**
-     * Poll order detail until its status is in $readyStatuses.
-     */
     private function waitForReadyStatus(OrderDetailItem $order): OrderDetailItem
     {
         $orderId = $order->getOrderId();
@@ -81,13 +76,13 @@ class OrderFulfillmentService
             throw new \RuntimeException('Order has no orderId.');
         }
 
-        for ($i = 0; $i < $this->maxStatusPollAttempts; $i++) {
-            $fresh = Order::getById($this->client, $orderId);
-            if (!$fresh) {
-                throw new \RuntimeException('Order not found after creation.');
-            }
+        $lastStatus = $order->getStatus();
 
-            if ($this->isReadyStatus($fresh->getStatus())) {
+        for ($i = 0; $i < $this->maxStatusPollAttempts; $i++) {
+            $fresh = $this->ordersApi->getById($orderId);
+            $lastStatus = $fresh->getStatus();
+
+            if ($this->isReadyStatus($lastStatus)) {
                 return $fresh;
             }
 
@@ -96,7 +91,7 @@ class OrderFulfillmentService
 
         throw new \RuntimeException(
             'Order not ready after ' . $this->maxStatusPollAttempts . ' attempts. ' .
-            'Last status: ' . (string)$order->getStatus()
+            'Last status: ' . (string) $lastStatus
         );
     }
 
@@ -104,7 +99,7 @@ class OrderFulfillmentService
     {
         $status = $order->getStatus();
         if (!$this->isReadyStatus($status)) {
-            throw new \RuntimeException('Order status is not ready: ' . (string)$status);
+            throw new \RuntimeException('Order status is not ready: ' . (string) $status);
         }
     }
 
@@ -116,7 +111,7 @@ class OrderFulfillmentService
 
         $s = strtoupper(trim($status));
         foreach ($this->readyStatuses as $allowed) {
-            if ($s === strtoupper($allowed)) {
+            if ($s === strtoupper((string) $allowed)) {
                 return true;
             }
         }
@@ -127,7 +122,7 @@ class OrderFulfillmentService
     /**
      * Extract codes from order detail: products[] -> codes[]
      *
-     * @return CodeItem[]
+     * @return array<int, CodeItem>
      */
     private function extractCodesFromOrder(OrderDetailItem $order): array
     {
@@ -146,15 +141,14 @@ class OrderFulfillmentService
      * If some codes are missing their actual "code" value (only codeId present),
      * fetch full code details via /v3/codes/{codeId}.
      *
-     * @param CodeItem[] $codes
-     * @return CodeItem[]
+     * @param array<int, CodeItem> $codes
+     * @return array<int, CodeItem>
      */
     private function ensureCodeValues(array $codes): array
     {
         $out = [];
 
         foreach ($codes as $c) {
-            // pokud už máme value, nech
             if ($c->getCode() !== null && $c->getCode() !== '') {
                 $out[] = $c;
                 continue;
@@ -166,8 +160,13 @@ class OrderFulfillmentService
                 continue;
             }
 
-            $full = Code::getById($this->client, $codeId);
-            $out[] = $full ?: $c;
+            // getById už typicky vyhazuje exception při 404,
+            // ale pro jistotu necháme fallback na původní $c
+            try {
+                $out[] = $this->codesApi->getById($codeId);
+            } catch (\Throwable $e) {
+                $out[] = $c;
+            }
         }
 
         return $out;

@@ -2,32 +2,31 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class OrderProductItem
+final class OrderProductItem extends Resource
 {
-    /** @var array */
-    private $data;
+    private Links $links;
 
-    private $links;
-
-    public function __construct(array $data)
+    public function __construct(\stdClass $data)
     {
-        $this->data = $data;
-        $this->links = new Links($data['links'] ?? []);
+        parent::__construct($data);
+
+        $rows = (isset($data->links) && is_array($data->links)) ? $data->links : [];
+        $this->links = new Links($rows);
     }
 
     public function getProductId(): ?string
     {
-        return $this->data['productId'] ?? null;
+        return $this->str('productId');
     }
 
     public function getName(): ?string
     {
-        return $this->data['name'] ?? null;
+        return $this->str('name');
     }
 
     public function getUnitPrice(): ?float
     {
-        return isset($this->data['unitPrice']) ? (float) $this->data['unitPrice'] : null;
+        return $this->float('unitPrice');
     }
 
     public function getLinks(): Links
@@ -36,25 +35,19 @@ class OrderProductItem
     }
 
     /**
-     * @return CodeItem[]
+     * @return array<int, CodeItem>
      */
     public function getCodes(): array
     {
-        $rows = isset($this->data['codes']) && is_array($this->data['codes'])
-            ? $this->data['codes']
-            : [];
+        $rows = (isset($this->data->codes) && is_array($this->data->codes)) ? $this->data->codes : [];
 
         $items = [];
         foreach ($rows as $row) {
-            if (is_array($row)) {
+            if ($row instanceof \stdClass) {
                 $items[] = new CodeItem($row);
             }
         }
-        return $items;
-    }
 
-    public function toArray(): array
-    {
-        return $this->data;
+        return $items;
     }
 }

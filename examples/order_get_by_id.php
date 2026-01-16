@@ -1,15 +1,16 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Order;
+use CodesWholesaleApi\Api\OrdersApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
 $orderId = $argv[1] ?? 'ORDER_ID_HERE';
 
-$order = Order::getById($client, $orderId);
+$ordersApi = new OrdersApi($client);
+$order = $ordersApi->getById($orderId);
 
-if (!$order) {
+if ($order === null) {
     echo "Not found\n";
     exit(0);
 }

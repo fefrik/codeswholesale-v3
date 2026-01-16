@@ -2,22 +2,25 @@
 
 namespace CodesWholesaleApi\Resource;
 
-class Links implements \IteratorAggregate, \Countable
+final class Links implements \IteratorAggregate, \Countable
 {
-    /** @var LinkItem[] */
-    private $items = [];
+    /** @var array<int, LinkItem> */
+    private array $items = [];
 
+    /**
+     * @param array<int, \stdClass> $rows
+     */
     public function __construct(array $rows)
     {
         foreach ($rows as $row) {
-            if (is_array($row)) {
+            if ($row instanceof \stdClass) {
                 $this->items[] = new LinkItem($row);
             }
         }
     }
 
     /**
-     * @return \ArrayIterator|LinkItem[]
+     * @return \ArrayIterator<int, LinkItem>
      */
     public function getIterator(): \ArrayIterator
     {
@@ -39,9 +42,6 @@ class Links implements \IteratorAggregate, \Countable
         return $this->items[0] ?? null;
     }
 
-    /**
-     * Find link by rel.
-     */
     public function findByRel(string $rel): ?LinkItem
     {
         foreach ($this->items as $item) {

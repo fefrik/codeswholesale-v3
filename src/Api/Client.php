@@ -57,7 +57,7 @@ final class Client
         return $this->request('GET', $path, null, $query);
     }
 
-    public function getData(string $path, array $query = []): array
+    public function getData(string $path, array $query = []): \stdClass
     {
         return $this->get($path, $query)->getData();
     }
@@ -82,7 +82,7 @@ final class Client
         return $this->requestWithAuthRetry($method, $path, $body, $query, true);
     }
 
-    public function requestData(string $method, string $path, array $body = null, array $query = []): array
+    public function requestData(string $method, string $path, array $body = null, array $query = []): \stdClass
     {
         return $this->request($method, $path, $body, $query)->getData();
     }
@@ -126,9 +126,18 @@ final class Client
         // error handling
         if (!$http->isSuccess()) {
             $json = $http->getJsonBody();
-            $msg = is_array($json)
-                ? ($json['message'] ?? $json['error_description'] ?? $json['error'] ?? 'Request failed')
-                : 'Request failed';
+
+            $msg = 'Request failed';
+            if ($json instanceof \stdClass) {
+                $msg =
+                    (isset($json->message) ? (string) $json->message : null)
+                        ?: (isset($json->error_description) ? (string) $json->error_description : null)
+                        ?: (isset($json->error) ? (string) $json->error : null)
+                            ?: 'Request failed';
+            } elseif (is_array($json)) {
+                // fallback pro endpointy co vrátí top-level array
+                $msg = 'Request failed';
+            }
 
             throw new ApiException(
                 $http,
@@ -144,7 +153,17 @@ final class Client
             );
         }
 
-        return new ApiResponse($http, $http->getJsonBody());
+        $json = $http->getJsonBody();
+        if (!$json instanceof \stdClass) {
+            // Kontrakt: pro Resource vrstvu chceme top-level objekt
+            // (pokud některý endpoint vrací array, řeš ho separátně)
+            throw new ApiException(
+                $http,
+                "CodesWholesale API returned unexpected JSON type (expected object). HTTP {$http->getStatus()}. Body: {$http->getRawBody()}"
+            );
+        }
+
+        return new ApiResponse($http, json);
     }
 
     // -------------------------
@@ -261,7 +280,7 @@ final class Client
         $json = null;
         $trimmed = trim((string) $raw);
         if ($trimmed !== '') {
-            $decoded = json_decode($trimmed, true);
+            $decoded = json_decode($trimmed);
             if (is_array($decoded)) {
                 $json = $decoded;
             }

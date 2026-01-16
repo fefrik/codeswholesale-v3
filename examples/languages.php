@@ -1,10 +1,13 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Language;
+use CodesWholesaleApi\Api\LanguagesApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
-foreach (Language::getAll($client) as $l) {
-    echo $l->getName() . PHP_EOL;
+$languagesApi = new LanguagesApi($client);
+$languages = $languagesApi->getAll();
+
+foreach ($languages as $language) {
+    echo $language->getName() . PHP_EOL;
 }

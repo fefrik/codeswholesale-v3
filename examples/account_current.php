@@ -1,16 +1,11 @@
 <?php
 declare(strict_types=1);
 
-use CodesWholesaleApi\Resource\Account;
+use CodesWholesaleApi\Api\AccountApi;
 
 $client = require __DIR__ . '/bootstrap.php';
 
-$acc = Account::getCurrent($client);
+$acc = new AccountApi($client);
+var_export($acc->getCurrent());
 
-if (!$acc) {
-    echo "No account\n";
-    exit(0);
-}
-
-var_export($acc->toArray());
 echo PHP_EOL;

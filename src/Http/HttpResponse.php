@@ -5,21 +5,21 @@ namespace CodesWholesaleApi\Http;
 final class HttpResponse
 {
     /** @var int */
-    private $status;
+    private int $status;
 
     /** @var string */
-    private $rawBody;
+    private string $rawBody;
 
-    /** @var array|null */
-    private $jsonBody;
+    /** @var \stdClass|null */
+    private ?\stdClass $jsonBody;
 
     /** @var array */
-    private $headers;
+    private array $headers;
 
     public function __construct(
         int $status,
         string $rawBody,
-        ?array $jsonBody = null,
+        ?\stdClass $jsonBody = null,
         array $headers = []
     ) {
         $this->status = $status;
@@ -38,7 +38,11 @@ final class HttpResponse
         return $this->rawBody;
     }
 
-    public function getJsonBody(): ?array
+    /**
+     * Decoded JSON body (top-level object).
+     * Returns null if body was empty or invalid JSON.
+     */
+    public function getJsonBody(): ?\stdClass
     {
         return $this->jsonBody;
     }
@@ -58,11 +62,14 @@ final class HttpResponse
         return $this->status === 401;
     }
 
-    public function json(): array
+    /**
+     * Strict helper – throws if response body is not a JSON object.
+     */
+    public function jsonObject(): \stdClass
     {
-        if ($this->jsonBody === null) {
+        if (!$this->jsonBody instanceof \stdClass) {
             throw new \RuntimeException(
-                "Response body is not valid JSON. HTTP {$this->status}."
+                "Response body is not a JSON object. HTTP {$this->status}."
             );
         }
 

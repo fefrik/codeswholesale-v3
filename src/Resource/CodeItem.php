@@ -2,19 +2,24 @@
 
 namespace CodesWholesaleApi\Resource;
 
-use CodesWholesaleApi\Api\Client;
-use Exception;
+use RuntimeException;
 
-class CodeItem
+final class CodeItem extends Resource
 {
-    /** @var array */
-    private $data;
+    private const CODE_TEXT  = 'CODE_TEXT';
+    private const CODE_IMAGE = 'CODE_IMAGE';
+    private const PRE_ORDER  = 'PRE_ORDER';
+
+    /** @var Links */
     private $links;
 
-    public function __construct(array $data)
+    public function __construct(\stdClass $data)
     {
-        $this->data = $data;
-        $this->links = new Links($data['links'] ?? []);
+        parent::__construct($data);
+
+        // links může být stdClass nebo array nebo nemusí být vůbec
+        $linksData = $this->obj('links');
+        $this->links = new Links($linksData ?: new \stdClass());
     }
 
     /**
@@ -22,8 +27,9 @@ class CodeItem
      *
      * @return bool True if code type is text
      */
-    public function isText(): bool {
-        return ($this->data['codeType'] ?? '') === 'CODE_TEXT';
+    public function isText(): bool
+    {
+        return $this->getCodeType() === self::CODE_TEXT;
     }
 
 
@@ -32,8 +38,9 @@ class CodeItem
      *
      * @return bool True if code type is image
      */
-    public function isImage(): bool {
-        return ($this->data['codeType'] ?? '') === 'CODE_IMAGE';
+    public function isImage(): bool
+    {
+        return $this->getCodeType() === self::CODE_IMAGE;
     }
 
     /**
@@ -41,14 +48,27 @@ class CodeItem
      *
      * @return bool True if code type is pre-order
      */
-    public function isPreOrder(): bool {
-        return ($this->data['codeType'] ?? '') === 'PRE_ORDER';
+    public function isPreOrder(): bool
+    {
+        return $this->getCodeType() === self::PRE_ORDER;
     }
 
-    public function getCodeId(): ?string { return $this->data['codeId'] ?? null; }
-    public function getCodeType(): ?string { return $this->data['codeType'] ?? null; }
-    public function getCode(): ?string { return $this->data['code'] ?? null; }
-    public function getFilename(): ?string { return $this->data['filename'] ?? null; }
+    /**
+     * Get the id for the code
+     * @return string|null
+     */
+    public function getCodeId(): ?string { return $this->str('codeId'); }
+
+    /**
+     * Get the type of the code
+     * @return string|null
+     */
+    public function getCodeType(): ?string { return $this->str('codeType'); }
+    /**
+     * CODE_IMAGE contains base64 string and CODE_TEXT is simple string
+     */
+    public function getCode(): ?string { return $this->str('code'); }
+    public function getFilename(): ?string { return $this->str('filename'); }
 
     public function getLinks(): Links
     {
@@ -60,39 +80,49 @@ class CodeItem
      *
      * Downloads the image code using the client and saves it to the specified directory.
      *
-     * @param Client $client The CodesWholesale client
      * @param string $saveDir Directory to save images
-     * @param string $baseUrl Base URL to remove from href
      *
      * @return string Full path of saved image
-     * @throws Exception
+     * @throws RuntimeException
      */
-    public function saveImageBase64(Client $client, string $saveDir = __DIR__ . '/codes', string $baseUrl = ''): string {
+    public function saveImageBase64(string $saveDir = __DIR__ . '/codes'): string {
 
         if (!$this->isImage()) {
-            throw new Exception("Only image codes can be downloaded.");
+            throw new RuntimeException("Only image codes can be downloaded.");
         }
 
-        if (!$this->getCode()) {
-            throw new Exception("Download link not found for the image code.");
+        $content = $this->getCode();
+        if (!$content) {
+            throw new RuntimeException("Download link not found for the image code.");
         }
 
-        $fullPath = self::prepareDirectory($saveDir, $this->getFileName());
-        $result = file_put_contents($fullPath, base64_decode($this->getCode()));
+        $fileName = $this->getFilename();
+        if (!$fileName) {
+            throw new RuntimeException('Filename not found for the image code.');
+        }
 
-        if (!$result) {
-            throw new Exception("Not able to write image code!");
+        $fullPath = self::prepareDirectory($saveDir, $fileName);
+
+        $decoded = base64_decode($content, true);
+        if ($decoded === false) {
+            throw new RuntimeException('Invalid base64 content for image code.');
+        }
+
+        $result = file_put_contents($fullPath, $decoded);
+
+        if ($result === false) {
+            throw new RuntimeException("Not able to write image code!");
         }
         return $fullPath;
     }
 
     private static function prepareDirectory($whereToSaveDirectory, $fileName): string
     {
-        if (!file_exists($whereToSaveDirectory)) {
-            mkdir($whereToSaveDirectory, 0755, true);
+        if (!is_dir($whereToSaveDirectory)) {
+            if (!mkdir($whereToSaveDirectory, 0755, true) && !is_dir($whereToSaveDirectory)) {
+                throw new RuntimeException("Failed to create directory: {$whereToSaveDirectory}");
+            }
         }
-        return $whereToSaveDirectory . "/" . $fileName;
+        return rtrim($whereToSaveDirectory, '/\\') . DIRECTORY_SEPARATOR . $fileName;
     }
-
-    public function toArray(): array { return $this->data; }
 }
