@@ -8,7 +8,7 @@ PHP SDK for working with the **CodesWholesale API v3**
 
 Designed for real-world e‑commerce integrations and long-running background jobs.
 
-✅ PHP 7.4+  
+✅ PHP 8.3+
 ✅ No framework required  
 ✅ Automatic OAuth authentication  
 ✅ Safe pagination (resume using continuation token)  
@@ -30,7 +30,7 @@ Thank you — even a small contribution keeps the project going! 🚀
 
 ## Requirements
 
-- PHP **7.4+**
+- PHP **8.3+**
 - **cURL** extension
 - **JSON** extension
 

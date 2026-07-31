@@ -7,7 +7,7 @@ final class FileContinuationTokenStorage implements ContinuationTokenStorageInte
     /** @var string */
     private string $file;
 
-    public function __construct(string $file = null)
+    public function __construct(?string $file = null)
     {
         $this->file = $file ?: (__DIR__ . '/products_continuation_token.txt');
     }

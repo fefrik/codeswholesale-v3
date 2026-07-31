@@ -17,7 +17,7 @@ final class ClientFactory {
         string $clientId,
         string $clientSecret,
         string $tokenKey = 'codeswholesale-config-id',
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         return self::liveDb($pdo, $clientId, $clientSecret, $tokenKey, $options);
     }
@@ -27,7 +27,7 @@ final class ClientFactory {
         string $clientId,
         string $clientSecret,
         string $tokenKey = 'codeswholesale-config-id',
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         return self::sandboxDb($pdo, $clientId, $clientSecret, $tokenKey, $options);
     }
@@ -38,7 +38,7 @@ final class ClientFactory {
         string $clientId,
         string $clientSecret,
         string $tokenKey = 'codeswholesale-config-id',
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         $storage = new TokenDatabaseOAuthStorage($pdo, $tokenKey);
         return self::make(Config::live(), $storage, $clientId, $clientSecret, $options);
@@ -49,7 +49,7 @@ final class ClientFactory {
         string $clientId,
         string $clientSecret,
         string $tokenKey = 'codeswholesale-config-id',
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         $storage = new TokenDatabaseOAuthStorage($pdo, $tokenKey);
         return self::make(Config::sandbox(), $storage, $clientId, $clientSecret, $options);
@@ -60,7 +60,7 @@ final class ClientFactory {
         string $clientId,
         string $clientSecret,
         string $sessionKey = 'codeswholesale.oauth_token',
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         $storage = new TokenSessionOAuthStorage($sessionKey);
         return self::make(Config::live(), $storage, $clientId, $clientSecret, $options);
@@ -70,7 +70,7 @@ final class ClientFactory {
         string $clientId,
         string $clientSecret,
         string $sessionKey = 'codeswholesale.oauth_token',
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         $storage = new TokenSessionOAuthStorage($sessionKey);
         return self::make(Config::sandbox(), $storage, $clientId, $clientSecret, $options);
@@ -82,7 +82,7 @@ final class ClientFactory {
         OAuthStorageInterface $storage,
         string $clientId,
         string $clientSecret,
-        ClientOptions $options = null
+        ?ClientOptions $options = null
     ): Client {
         $o = $options ?: new ClientOptions();
 

@@ -7,7 +7,7 @@ final class FileLastSyncAtStorage implements LastSyncAtStorageInterface
     /** @var string */
     private string $file;
 
-    public function __construct(string $file = null)
+    public function __construct(?string $file = null)
     {
         $this->file = $file ?: (__DIR__ . '/products_last_sync_at.txt');
     }

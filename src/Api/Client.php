@@ -35,7 +35,7 @@ final class Client
         OAuthStorageInterface $storage,
         string                $clientId,
         string                $clientSecret,
-        TokenNormalizer       $normalizer = null,
+        ?TokenNormalizer      $normalizer = null,
         int                   $timeoutSeconds = 20,
         string                $userAgent = 'CodesWholesaleClient/1.0'
     ) {
@@ -87,12 +87,12 @@ final class Client
         return $this->request('DELETE', $path, null, $query);
     }
 
-    public function request(string $method, string $path, array $body = null, array $query = []): ApiResponse
+    public function request(string $method, string $path, ?array $body = null, array $query = []): ApiResponse
     {
         return $this->requestWithAuthRetry($method, $path, $body, $query, true);
     }
 
-    public function requestData(string $method, string $path, array $body = null, array $query = []): \stdClass
+    public function requestData(string $method, string $path, ?array $body = null, array $query = []): \stdClass
     {
         return $this->request($method, $path, $body, $query)->getData();
     }
@@ -104,7 +104,7 @@ final class Client
     private function requestWithAuthRetry(
         string $method,
         string $path,
-        array $body = null,
+        ?array $body = null,
         array $query = [],
         bool $allowRetry = true
     ): ApiResponse {

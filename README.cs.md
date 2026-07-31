@@ -6,7 +6,7 @@ PHP SDK pro práci s **CodesWholesale API v3**
 
 Navrženo pro reálné e‑commerce integrace a dlouhodobě běžící procesy.
 
-✅ PHP 7.4+  
+✅ PHP 8.3+
 ✅ Není potřeba žádný framework  
 ✅ Automatická OAuth autentizace  
 ✅ Bezpečné stránkování (pokračování pomocí continuation tokenu)  
@@ -16,7 +16,7 @@ Navrženo pro reálné e‑commerce integrace a dlouhodobě běžící procesy.
 
 ## Požadavky
 
-- PHP **7.4+**
+- PHP **8.3+**
 - rozšíření **cURL**
 - rozšíření **JSON**
 

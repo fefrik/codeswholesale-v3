@@ -31,14 +31,14 @@ final class CodesWholesale
      * @param string $storageMode OAuthStorageMode::DB|OAuthStorageMode::SESSION
      */
     public static function create(
-        string        $mode,
-        string        $storageMode,
-                      $clientId,
-                      $clientSecret,
-        PDO           $pdo = null,
-                      $tokenKey = null,
-                      $sessionKey = null,
-        ClientOptions $options = null
+        string $mode,
+        string $storageMode,
+        string $clientId,
+        string $clientSecret,
+        ?PDO $pdo = null,
+        ?string $tokenKey = null,
+        ?string $sessionKey = null,
+        ?ClientOptions $options = null
     ): Sdk
     {
         $client = self::createClient(
@@ -56,14 +56,14 @@ final class CodesWholesale
     }
 
     private static function createClient(
-        $mode,
-        $storageMode,
-        $clientId,
-        $clientSecret,
-        PDO $pdo = null,
-        $tokenKey = null,
-        $sessionKey = null,
-        ClientOptions $options = null
+        string $mode,
+        string $storageMode,
+        string $clientId,
+        string $clientSecret,
+        ?PDO $pdo = null,
+        ?string $tokenKey = null,
+        ?string $sessionKey = null,
+        ?ClientOptions $options = null
     ): Client
     {
         if ($storageMode === OAuthStorageMode::DB && $pdo === null) {
