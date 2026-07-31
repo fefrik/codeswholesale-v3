@@ -5,6 +5,7 @@ namespace CodesWholesaleApi;
 use CodesWholesaleApi\Api\Client;
 use CodesWholesaleApi\Factory\ClientFactory;
 use CodesWholesaleApi\Factory\ClientOptions;
+use CodesWholesaleApi\Sdk\Sdk;
 use InvalidArgumentException;
 use PDO;
 
@@ -18,7 +19,7 @@ final class CodesWholesale
     /**
      * Nejjednodušší varianta: když už máš Client, jen ho “obalíš” do SDK.
      */
-    public static function sdk(Client $client)
+    public static function sdk(Client $client): Sdk
     {
         return new Sdk($client);
     }
@@ -101,20 +102,4 @@ final class CodesWholesale
         // sandbox + session
         return ClientFactory::sandboxSession($clientId, $clientSecret, $sessionKey, $options);
     }
-}
-
-final class Mode
-{
-    public const LIVE = 'live';
-    public const SANDBOX = 'sandbox';
-
-    private function __construct() {}
-}
-
-final class OAuthStorageMode
-{
-    public const DB = 'db';
-    public const SESSION = 'session';
-
-    private function __construct() {}
 }

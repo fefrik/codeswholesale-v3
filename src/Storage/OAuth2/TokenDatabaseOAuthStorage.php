@@ -60,7 +60,7 @@ final class TokenDatabaseOAuthStorage implements OAuthStorageInterface
         return [
             'access_token' => $row['access_token'],
             'token_type'   => $row['token_type'],
-            'expires_in'   => (int)$row['expires_in'],
+            'expires_at'   => (int)$row['expires_in'],
         ];
     }
 

@@ -39,6 +39,16 @@ final class Client
         int                   $timeoutSeconds = 20,
         string                $userAgent = 'CodesWholesaleClient/1.0'
     ) {
+        if ($clientId === '' || $clientSecret === '') {
+            throw new \InvalidArgumentException('OAuth client ID and secret must not be empty.');
+        }
+        if ($timeoutSeconds < 1) {
+            throw new \InvalidArgumentException('HTTP timeout must be at least one second.');
+        }
+        if (preg_match('/[\r\n]/', $userAgent)) {
+            throw new \InvalidArgumentException('User-Agent must not contain line breaks.');
+        }
+
         $this->config = $config;
         $this->storage = $storage;
         $this->clientId = $clientId;
@@ -141,7 +151,7 @@ final class Client
 
             throw new ApiException(
                 $http,
-                "CodesWholesale API error. HTTP {$http->getStatus()}. {$msg}. Body: {$http->getRawBody()}"
+                "CodesWholesale API error. HTTP {$http->getStatus()}. {$msg}."
             );
         }
 
@@ -149,7 +159,7 @@ final class Client
         if ($http->getJsonBody() === null) {
             throw new ApiException(
                 $http,
-                "CodesWholesale API returned non-JSON body. HTTP {$http->getStatus()}. Body: {$http->getRawBody()}"
+                "CodesWholesale API returned non-JSON body. HTTP {$http->getStatus()}."
             );
         }
 
@@ -159,7 +169,7 @@ final class Client
             // (pokud některý endpoint vrací array, řeš ho separátně)
             throw new ApiException(
                 $http,
-                "CodesWholesale API returned unexpected JSON type (expected object). HTTP {$http->getStatus()}. Body: {$http->getRawBody()}"
+                "CodesWholesale API returned unexpected JSON type (expected object). HTTP {$http->getStatus()}."
             );
         }
 
@@ -186,13 +196,13 @@ final class Client
 
     private function fetchOAuthToken(): array
     {
-        $query = http_build_query([
+        $form = http_build_query([
             'grant_type'    => 'client_credentials',
             'client_id'     => $this->clientId,
             'client_secret' => $this->clientSecret,
         ], '', '&', PHP_QUERY_RFC3986);
 
-        $url = $this->config->getApiBaseUrl() . '/oauth/token?' . $query;
+        $url = $this->config->getOauthTokenUrl();
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -201,8 +211,10 @@ final class Client
             CURLOPT_CONNECTTIMEOUT => $this->timeoutSeconds,
             CURLOPT_USERAGENT => $this->userAgent,
             CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $form,
             CURLOPT_HTTPHEADER => [
                 'Accept: application/json',
+                'Content-Type: application/x-www-form-urlencoded',
             ],
         ]);
 
@@ -218,7 +230,7 @@ final class Client
 
         $data = json_decode((string) $response, true);
         if (!is_array($data)) {
-            throw new \RuntimeException("OAuth token response is not valid JSON. HTTP {$status}. Body: {$response}");
+            throw new \RuntimeException("OAuth token response is not valid JSON. HTTP {$status}.");
         }
 
         if ($status < 200 || $status >= 300) {

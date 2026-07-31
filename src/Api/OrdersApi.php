@@ -107,6 +107,12 @@ final class OrdersApi
             if (!isset($p['quantity'])) {
                 throw new \InvalidArgumentException("Order products[{$i}].quantity is required.");
             }
+            if (!is_int($p['quantity']) || $p['quantity'] < 1) {
+                throw new \InvalidArgumentException("Order products[{$i}].quantity must be a positive integer.");
+            }
+            if (isset($p['price']) && (!is_numeric($p['price']) || (float) $p['price'] < 0)) {
+                throw new \InvalidArgumentException("Order products[{$i}].price must be a non-negative number.");
+            }
         }
 
         if (isset($request['allowPreOrder']) && !is_bool($request['allowPreOrder'])) {

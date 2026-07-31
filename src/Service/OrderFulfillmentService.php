@@ -27,6 +27,13 @@ final class OrderFulfillmentService
         int $maxStatusPollAttempts = 10,
         int $pollSleepSeconds = 2
     ) {
+        if ($readyStatuses === []) {
+            throw new \InvalidArgumentException('At least one ready order status is required.');
+        }
+        if ($maxStatusPollAttempts < 1 || $pollSleepSeconds < 0) {
+            throw new \InvalidArgumentException('Polling attempts must be positive and sleep must not be negative.');
+        }
+
         $this->client = $client;
         $this->readyStatuses = $readyStatuses;
         $this->maxStatusPollAttempts = $maxStatusPollAttempts;
@@ -48,6 +55,9 @@ final class OrderFulfillmentService
     public function createAndFetchCodes(array $orderRequest, bool $waitUntilReady = true): array
     {
         $order = $this->ordersApi->create($orderRequest);
+        if (!$order instanceof OrderDetailItem) {
+            throw new \RuntimeException('CodesWholesale returned an empty order response.');
+        }
 
         // Po create často už dostaneš i codes, ale raději to ověříme přes detail a status.
         if ($waitUntilReady) {
@@ -80,6 +90,9 @@ final class OrderFulfillmentService
 
         for ($i = 0; $i < $this->maxStatusPollAttempts; $i++) {
             $fresh = $this->ordersApi->getById($orderId);
+            if (!$fresh instanceof OrderDetailItem) {
+                throw new \RuntimeException('CodesWholesale returned an empty order detail response.');
+            }
             $lastStatus = $fresh->getStatus();
 
             if ($this->isReadyStatus($lastStatus)) {
@@ -162,11 +175,11 @@ final class OrderFulfillmentService
 
             // getById už typicky vyhazuje exception při 404,
             // ale pro jistotu necháme fallback na původní $c
-            try {
-                $out[] = $this->codesApi->getById($codeId);
-            } catch (\Throwable $e) {
-                $out[] = $c;
+            $fetched = $this->codesApi->getById($codeId);
+            if (!$fetched instanceof CodeItem || $fetched->getCode() === null || $fetched->getCode() === '') {
+                throw new \RuntimeException('Ordered code could not be retrieved: ' . $codeId);
             }
+            $out[] = $fetched;
         }
 
         return $out;

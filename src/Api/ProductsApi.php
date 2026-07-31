@@ -120,10 +120,14 @@ final class ProductsApi
 
                 usleep(200000);
             } catch (ApiException $e) {
+                $status = $e->getResponse()->getStatus();
+                if ($status !== 429 && $status < 500) {
+                    throw $e;
+                }
+
                 $retry++;
 
                 if ($retry > $maxRetry) {
-                    $status = $e->getResponse()->getStatus();
                     throw new \RuntimeException(
                         "Failed after {$maxRetry} attempts (last HTTP {$status}): {$e->getMessage()}",
                         0,
@@ -177,7 +181,11 @@ final class ProductsApi
      */
     public function getById(string $productId): ?ProductItem
     {
-        $data = $this->client->requestData('GET', self::PRODUCTS_ENDPOINT . '/' . $productId);
+        if ($productId === '') {
+            throw new \InvalidArgumentException('productId must not be empty.');
+        }
+
+        $data = $this->client->requestData('GET', self::PRODUCTS_ENDPOINT . '/' . rawurlencode($productId));
 
         if (empty(get_object_vars($data))) {
             return null;

@@ -37,12 +37,13 @@ composer require codeswholesale-v3/sdk
 ```php
 use CodesWholesaleApi\Api\Client;
 use CodesWholesaleApi\Config\Config;
-use CodesWholesaleApi\Sdk;
+use CodesWholesaleApi\Sdk\Sdk;
+use CodesWholesaleApi\Storage\OAuth2\TokenSessionOAuthStorage;
 
-$oauthStorage = new FileStorage(__DIR__ . '/oauth_token.json');
+$oauthStorage = new TokenSessionOAuthStorage();
 
 $client = new Client(
-    new Config('https://api.codeswholesale.com'),
+    Config::live(),
     $oauthStorage,
     'CLIENT_ID',
     'CLIENT_SECRET'

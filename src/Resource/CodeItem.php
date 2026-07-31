@@ -100,8 +100,17 @@ final class CodeItem extends Resource
             throw new RuntimeException('Invalid base64 content for image code.');
         }
 
-        if (file_put_contents($fullPath, $decoded) === false) {
-            throw new RuntimeException("Not able to write image code!");
+        $handle = @fopen($fullPath, 'xb');
+        if ($handle === false) {
+            throw new RuntimeException('Image code file already exists or cannot be created.');
+        }
+
+        try {
+            if (fwrite($handle, $decoded) !== strlen($decoded)) {
+                throw new RuntimeException('Unable to write the complete image code.');
+            }
+        } finally {
+            fclose($handle);
         }
         return $fullPath;
     }

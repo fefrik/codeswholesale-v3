@@ -10,8 +10,8 @@ final class HttpResponse
     /** @var string */
     private string $rawBody;
 
-    /** @var \stdClass|null */
-    private ?\stdClass $jsonBody;
+    /** @var mixed */
+    private $jsonBody;
 
     /** @var array */
     private array $headers;
@@ -19,7 +19,7 @@ final class HttpResponse
     public function __construct(
         int $status,
         string $rawBody,
-        ?\stdClass $jsonBody = null,
+        $jsonBody = null,
         array $headers = []
     ) {
         $this->status = $status;
@@ -42,7 +42,7 @@ final class HttpResponse
      * Decoded JSON body (top-level object).
      * Returns null if body was empty or invalid JSON.
      */
-    public function getJsonBody(): ?\stdClass
+    public function getJsonBody()
     {
         return $this->jsonBody;
     }
