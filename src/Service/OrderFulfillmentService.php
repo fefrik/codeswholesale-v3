@@ -141,8 +141,8 @@ final class OrderFulfillmentService
     {
         $result = [];
 
-        foreach ($order->getProducts() as $product) {
-            foreach ($product->getCodes() as $code) {
+        foreach ($order->iterateProducts() as $product) {
+            foreach ($product->iterateCodes() as $code) {
                 $result[] = $code;
             }
         }

@@ -14,7 +14,9 @@ final class LinkItem extends Resource
 
     public function isTemplated(): bool
     {
-        return (bool) $this->bool('templated');
+        return $this->getTemplated() ?? false;
     }
+
+    public function getTemplated(): ?bool { return $this->bool('templated'); }
 }
 

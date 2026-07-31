@@ -14,6 +14,11 @@ final class ProductImageItem extends Resource
         return $this->str('image');
     }
 
+    public function getUrl(): ?string
+    {
+        return $this->getImage();
+    }
+
     public function getFormat(): ?string
     {
         return $this->str('format');

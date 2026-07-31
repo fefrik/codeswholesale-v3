@@ -216,7 +216,7 @@ final class ProductsApi
     }
 
     /**
-     * @return \Generator<int, array{items: array<int, ProductItem>, continuationToken: ?string, raw: \stdClass}, void, void>
+     * @return \Generator<int, array{items: array<int, ProductItem>, continuationToken: ?string}, void, void>
      */
     private function iteratePages(
         array $filters,
@@ -240,7 +240,14 @@ final class ProductsApi
                 $query['continuationToken'] = $continuationToken;
             }
 
-            $page = $this->getPageWithRetry($query, $maxRetry);
+            $responsePage = $this->getPageWithRetry($query, $maxRetry);
+            // Streaming callers do not need the raw response. Dropping it here releases
+            // the decoded page tree before individual resources are consumed.
+            $page = [
+                'items' => $responsePage['items'],
+                'continuationToken' => $responsePage['continuationToken'],
+            ];
+            unset($responsePage);
             yield $page;
 
             $continuationToken = $page['continuationToken'];

@@ -34,28 +34,26 @@ final class ProductDescriptionItem extends Resource
         return $this->str('developerHomepage');
     }
 
-    /**
-     * @return array
-     */
+    /** @return list<string> */
     public function getEans(): array
     {
-        return $this->scalarArray('eans');
+        return $this->stringList('eans');
     }
 
     /**
-     * @return array
+     * @return list<string>
      */
     public function getEditions(): array
     {
-        return $this->scalarArray('editions');
+        return $this->stringList('editions');
     }
 
     /**
-     * @return array
+     * @return list<string>
      */
     public function getExtensionPacks(): array
     {
-        return $this->scalarArray('extensionPacks');
+        return $this->stringList('extensionPacks');
     }
 
     public function getKeywords(): ?string
@@ -74,51 +72,71 @@ final class ProductDescriptionItem extends Resource
     }
 
     /**
-     * @return array
+     * @return list<string>
      */
     public function getInTheGameLanguages(): array
     {
-        return $this->scalarArray('inTheGameLanguages');
+        return $this->stringList('inTheGameLanguages');
     }
 
-    /**
-     * @return array
-     */
+    /** @return list<LocalizedTitleItem> */
     public function getLocalizedTitles(): array
     {
-        return $this->scalarArray('localizedTitles');
+        return iterator_to_array($this->iterateLocalizedTitles(), false);
     }
 
-    /**
-     * @return array
-     */
+    /** @return \Generator<int, LocalizedTitleItem, void, void> */
+    public function iterateLocalizedTitles(): \Generator
+    {
+        foreach ($this->iterateObjects('localizedTitles') as $item) yield new LocalizedTitleItem($item);
+    }
+
+    /** @return list<FactSheetItem> */
     public function getFactSheets(): array
     {
-        return $this->scalarArray('factSheets');
+        return iterator_to_array($this->iterateFactSheets(), false);
     }
 
-    /**
-     * @return array
-     */
+    /** @return \Generator<int, FactSheetItem, void, void> */
+    public function iterateFactSheets(): \Generator
+    {
+        foreach ($this->iterateObjects('factSheets') as $item) yield new FactSheetItem($item);
+    }
+
+    /** @return list<PhotoItem> */
     public function getPhotos(): array
     {
-        return $this->scalarArray('photos');
+        return iterator_to_array($this->iteratePhotos(), false);
     }
 
-    /**
-     * @return array
-     */
+    /** @return \Generator<int, PhotoItem, void, void> */
+    public function iteratePhotos(): \Generator
+    {
+        foreach ($this->iterateObjects('photos') as $item) yield new PhotoItem($item);
+    }
+
+    /** @return list<VideoItem> */
     public function getVideos(): array
     {
-        return $this->scalarArray('videos');
+        return iterator_to_array($this->iterateVideos(), false);
     }
 
-    /**
-     * @return array
-     */
+    /** @return \Generator<int, VideoItem, void, void> */
+    public function iterateVideos(): \Generator
+    {
+        foreach ($this->iterateObjects('videos') as $item) yield new VideoItem($item);
+    }
+
+    /** @return list<ReleaseItem> */
     public function getReleases(): array
     {
-        return $this->scalarArray('releases');
+        return iterator_to_array($this->iterateReleases(), false);
+    }
+
+    /** @return \Generator<int, ReleaseItem, void, void> */
+    public function iterateReleases(): \Generator
+    {
+        foreach ($this->iterateObjects('releases') as $item) yield new ReleaseItem($item);
     }
 
     public function getPegiRating(): ?string

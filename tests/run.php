@@ -14,9 +14,17 @@ use CodesWholesaleApi\Auth\TokenNormalizer;
 use CodesWholesaleApi\CodesWholesale;
 use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Http\HttpResponse;
+use CodesWholesaleApi\Enum\CodeType;
+use CodesWholesaleApi\Enum\OrderStatus;
 use CodesWholesaleApi\Mode;
 use CodesWholesaleApi\OAuthStorageMode;
 use CodesWholesaleApi\Resource\CodeItem;
+use CodesWholesaleApi\Resource\Exceptions\NoImagesFoundException;
+use CodesWholesaleApi\Resource\Exceptions\ResourceMappingException;
+use CodesWholesaleApi\Resource\OrderDetailItem;
+use CodesWholesaleApi\Resource\ProductDescriptionItem;
+use CodesWholesaleApi\Resource\ProductItem;
+use CodesWholesaleApi\Service\ImageCodeWriter;
 use CodesWholesaleApi\Sdk\Sdk;
 use CodesWholesaleApi\Api\ProductsApi;
 use CodesWholesaleApi\Storage\ContinuationToken\ContinuationTokenStorageInterface;
@@ -88,12 +96,58 @@ expect(is_array($arrayResponse->getJsonBody()), 'HttpResponse must safely repres
 
 $tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cw-sdk-' . bin2hex(random_bytes(6));
 $code = new CodeItem((object) ['codeType' => 'CODE_IMAGE', 'code' => base64_encode('image-data'), 'filename' => '../key.png']);
-$path = $code->saveImageBase64($tempDir);
+$path = (new ImageCodeWriter())->write($code, $tempDir);
 expect(basename($path) === 'key.png', 'Image filename traversal was not removed.');
 expect(file_get_contents($path) === 'image-data', 'Image code content was not saved correctly.');
-expectException(static function () use ($code, $tempDir): void { $code->saveImageBase64($tempDir); }, RuntimeException::class);
+expect($code->getType() === CodeType::Image, 'Code type enum mapping failed.');
+expectException(static function () use ($code, $tempDir): void { (new ImageCodeWriter())->write($code, $tempDir); }, RuntimeException::class);
 unlink($path);
 rmdir($tempDir);
+
+$source = (object) [
+    'productId' => 'immutable',
+    'name' => 'Original',
+    'quantity' => 5,
+    'releaseDate' => '2026-08-01T10:15:00+02:00',
+    'regions' => ['WORLDWIDE'],
+    'images' => [(object) ['format' => 'COVER', 'image' => null]],
+    'prices' => [(object) ['from' => 1, 'value' => 9.99]],
+];
+$resource = new ProductItem($source);
+$source->name = 'Changed outside';
+$raw = $resource->raw();
+$raw->name = 'Changed raw copy';
+expect($resource->getName() === 'Original', 'Resource data must be immutable from input and raw copies.');
+expect($resource->getReleaseDate()?->format(DATE_ATOM) === '2026-08-01T10:15:00+02:00', 'Release date mapping lost timezone information.');
+expect($resource->getRegions() === ['WORLDWIDE'], 'Typed string list mapping failed.');
+expect(count(iterator_to_array($resource->iteratePrices())) === 1, 'Nested price iterator failed.');
+expectException(static function () use ($resource): void { $resource->getImageUrl('COVER'); }, NoImagesFoundException::class);
+expectException(static function (): void { (new ProductItem((object) ['quantity' => '5']))->getStock(); }, ResourceMappingException::class);
+
+$description = new ProductDescriptionItem((object) [
+    'eans' => ['1234567890123'],
+    'localizedTitles' => [(object) ['territory' => 'CZ', 'title' => 'Český název']],
+    'factSheets' => [(object) ['territory' => 'CZ', 'description' => 'Popis']],
+    'photos' => [(object) ['territory' => 'CZ', 'type' => 'COVER', 'url' => 'https://example.test/cover.jpg']],
+    'videos' => [(object) ['ageWarning' => false, 'title' => 'Trailer', 'url' => 'https://example.test/video']],
+    'releases' => [(object) ['releaseDate' => '2026-08-01', 'releaseStatus' => 'RELEASED', 'territory' => 'CZ']],
+]);
+expect($description->getEans() === ['1234567890123'], 'Description scalar lists are not typed.');
+expect($description->getLocalizedTitles()[0]->getTitle() === 'Český název', 'Localized title resource mapping failed.');
+expect($description->getFactSheets()[0]->getDescription() === 'Popis', 'Fact sheet resource mapping failed.');
+expect($description->getPhotos()[0]->getUrl() === 'https://example.test/cover.jpg', 'Photo resource mapping failed.');
+expect($description->getVideos()[0]->hasAgeWarning() === false, 'Video resource mapping failed.');
+expect($description->getReleases()[0]->getReleaseDate() instanceof DateTimeImmutable, 'Release resource date mapping failed.');
+expectException(static function (): void { (new ProductDescriptionItem((object) ['eans' => [123]]))->getEans(); }, ResourceMappingException::class);
+
+$order = new OrderDetailItem((object) [
+    'status' => 'completed',
+    'createdOn' => '2026-08-01T08:00:00Z',
+    'products' => [(object) ['codes' => [(object) ['codeType' => 'CODE_TEXT', 'code' => 'ABC']]]],
+]);
+expect($order->getStatusType() === OrderStatus::Completed, 'Order status enum mapping failed.');
+expect($order->getCreatedAt() instanceof DateTimeImmutable, 'Order creation date mapping failed.');
+expect(iterator_to_array($order->iterateProducts())[0]->getCodes()[0]->isText(), 'Nested order/code iteration failed.');
 
 $pagedClient = new PagedClient([
     '' => (object) [

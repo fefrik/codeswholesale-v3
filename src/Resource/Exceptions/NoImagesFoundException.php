@@ -1,10 +1,11 @@
 <?php
+
 namespace CodesWholesaleApi\Resource\Exceptions;
 
-class NoImagesFoundException extends \Exception
+final class NoImagesFoundException extends \RuntimeException
 {
-    /**
-     * @var string
-     */
-    public $message = 'Images not found';
+    public function __construct(string $message = 'Images not found')
+    {
+        parent::__construct($message);
+    }
 }

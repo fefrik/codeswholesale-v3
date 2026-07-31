@@ -34,12 +34,13 @@ final class ProductItem extends Resource
     /** @return array<int, ImageItem> */
     public function getImages(): array
     {
-        return array_map(
-            function (\stdClass $i) {
-                return new ImageItem($i);
-            },
-            $this->list('images')
-        );
+        return iterator_to_array($this->iterateImages(), false);
+    }
+
+    /** @return \Generator<int, ImageItem, void, void> */
+    public function iterateImages(): \Generator
+    {
+        foreach ($this->iterateObjects('images') as $item) yield new ImageItem($item);
     }
 
     /**
@@ -51,7 +52,7 @@ final class ProductItem extends Resource
             $fmt = $image->getFormat();
             $url = $image->getUrl();
 
-            if ($fmt === $format && $url !== '') {
+            if ($fmt === $format && $url !== null && $url !== '') {
                 return $url;
             }
         }
@@ -62,17 +63,18 @@ final class ProductItem extends Resource
     /** @return array<int, PriceItem> */
     public function getPrices(): array
     {
-        return array_map(
-            function (\stdClass $p) {
-                return new PriceItem($p);
-            },
-            $this->list('prices')
-        );
+        return iterator_to_array($this->iteratePrices(), false);
+    }
+
+    /** @return \Generator<int, PriceItem, void, void> */
+    public function iteratePrices(): \Generator
+    {
+        foreach ($this->iterateObjects('prices') as $item) yield new PriceItem($item);
     }
 
     public function getDefaultPrice(): ?float
     {
-        foreach ($this->getPrices() as $price) {
+        foreach ($this->iteratePrices() as $price) {
             if ($price->getFrom() === 1) {
                 return $price->getValue();
             }
@@ -83,20 +85,19 @@ final class ProductItem extends Resource
     /** @return array<int, string> */
     public function getRegions(): array
     {
-        // pokud nechceš filtrování na stringy, vrať jen scalarArray('regions')
-        return array_values(array_filter($this->scalarArray('regions'), 'is_string'));
+        return $this->stringList('regions');
     }
 
     /** @return array<int, string> */
     public function getLanguages(): array
     {
-        return array_values(array_filter($this->scalarArray('languages'), 'is_string'));
+        return $this->stringList('languages');
     }
 
     /** @return array<int, string> */
     public function getBadges(): array
     {
-        return array_values(array_filter($this->scalarArray('badges'), 'is_string'));
+        return $this->stringList('badges');
     }
 
     public function getRegionDescription(): ?string
@@ -109,18 +110,13 @@ final class ProductItem extends Resource
         return $this->str('releaseDate');
     }
 
+    public function getReleaseDate(): ?\DateTimeImmutable
+    {
+        return $this->dateTime('releaseDate');
+    }
+
     public function getReleaseDateFormatted(string $format = 'd/m/Y'): ?string
     {
-        $raw = $this->getReleaseDateRaw();
-        if (!$raw) {
-            return null;
-        }
-
-        $timestamp = strtotime($raw);
-        if ($timestamp === false) {
-            return null;
-        }
-
-        return date($format, $timestamp);
+        return $this->getReleaseDate()?->format($format);
     }
 }

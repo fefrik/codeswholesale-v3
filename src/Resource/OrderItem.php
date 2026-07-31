@@ -2,6 +2,8 @@
 
 namespace CodesWholesaleApi\Resource;
 
+use CodesWholesaleApi\Enum\OrderStatus;
+
 final class OrderItem extends Resource
 {
 
@@ -35,6 +37,17 @@ final class OrderItem extends Resource
         return $this->str('createdOn');
     }
 
+    public function getStatusType(): ?OrderStatus
+    {
+        $status = $this->getStatus();
+        return $status === null ? null : OrderStatus::tryFrom(strtoupper($status));
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->dateTime('createdOn');
+    }
+
     public function getTotalPrice(): ?float
     {
         return $this->float('totalPrice');
@@ -43,11 +56,12 @@ final class OrderItem extends Resource
     /** @return array<int, LinkItem> */
     public function getLinks(): array
     {
-        return array_map(
-            function (\stdClass $p) {
-                return new LinkItem($p);
-            },
-            $this->list('links')
-        );
+        return iterator_to_array($this->iterateLinks(), false);
+    }
+
+    /** @return \Generator<int, LinkItem, void, void> */
+    public function iterateLinks(): \Generator
+    {
+        foreach ($this->iterateObjects('links') as $item) yield new LinkItem($item);
     }
 }

@@ -27,11 +27,13 @@ final class OrderProductItem extends Resource
     /** @return array<int, LinkItem> */
     public function getLinks(): array
     {
-        $links = [];
-        foreach ($this->list('links') as $linkData) {
-            $links[] = new LinkItem($linkData);
-        }
-        return $links;
+        return iterator_to_array($this->iterateLinks(), false);
+    }
+
+    /** @return \Generator<int, LinkItem, void, void> */
+    public function iterateLinks(): \Generator
+    {
+        foreach ($this->iterateObjects('links') as $item) yield new LinkItem($item);
     }
 
     /**
@@ -39,10 +41,12 @@ final class OrderProductItem extends Resource
      */
     public function getCodes(): array
     {
-        $items = [];
-        foreach ($this->list('codes') as $row) {
-            $items[] = new CodeItem($row);
-        }
-        return $items;
+        return iterator_to_array($this->iterateCodes(), false);
+    }
+
+    /** @return \Generator<int, CodeItem, void, void> */
+    public function iterateCodes(): \Generator
+    {
+        foreach ($this->iterateObjects('codes') as $item) yield new CodeItem($item);
     }
 }

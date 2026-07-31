@@ -85,9 +85,12 @@ Client
 - Converts responses into **Resource objects**
 
 ### Resource
-- Immutable DTO (read‑only)
-- Typed getters
-- No business logic
+- Immutable DTO: input data and `raw()` are defensively copied
+- Strict typed getters; invalid API field types throw `ResourceMappingException`
+- `DateTimeImmutable` accessors preserve timezone information
+- Nested collections offer memory-efficient `iterate*()` generators
+- Stable values such as code type are represented by PHP enums
+- No filesystem or HTTP side effects
 
 ---
 
@@ -108,7 +111,7 @@ Client
 
 ### Codes (License Keys)
 - Fetch ordered license keys
-- Download text or image-based codes
+- Write image-based codes through `ImageCodeWriter`
 - Base64 image handling
 
 ### Account
@@ -171,6 +174,35 @@ For resumable jobs, configure a `ContinuationTokenStorageInterface` and use
 `iterateWithContinuationStorage()`. A token is checkpointed only after the
 complete page has been consumed, so stopping the loop cannot skip products from
 the unfinished page.
+
+### Resource collections and dates
+
+Array getters remain available for convenience. For larger nested collections,
+use their generator counterparts:
+
+```php
+foreach ($order->iterateProducts() as $orderedProduct) {
+    foreach ($orderedProduct->iterateCodes() as $code) {
+        deliver($code);
+    }
+}
+
+$releasedAt = $product->getReleaseDate(); // ?DateTimeImmutable
+```
+
+Product descriptions expose structured `LocalizedTitleItem`, `FactSheetItem`,
+`PhotoItem`, `VideoItem`, and `ReleaseItem` objects instead of untyped values.
+`raw()` returns a deep copy and cannot mutate the resource.
+
+Image codes are written by a separate service:
+
+```php
+use CodesWholesaleApi\Service\ImageCodeWriter;
+
+$path = (new ImageCodeWriter())->write($code, $privateDirectory);
+```
+
+`CodeItem::saveImageBase64()` remains as a deprecated compatibility wrapper.
 
 ---
 

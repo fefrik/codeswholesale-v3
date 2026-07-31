@@ -2,126 +2,40 @@
 
 namespace CodesWholesaleApi\Resource;
 
-use RuntimeException;
+use CodesWholesaleApi\Enum\CodeType;
+use CodesWholesaleApi\Service\ImageCodeWriter;
 
 final class CodeItem extends Resource
 {
-    private const CODE_TEXT  = 'CODE_TEXT';
-    private const CODE_IMAGE = 'CODE_IMAGE';
-    private const PRE_ORDER  = 'PRE_ORDER';
-
-    public function __construct(\stdClass $data)
-    {
-        parent::__construct($data);
-    }
-
-    /** @return array<int, LinkItem> */
+    /** @return list<LinkItem> */
     public function getLinks(): array
     {
-        return array_map(
-            function (\stdClass $p) {
-                return new LinkItem($p);
-            },
-            $this->list('links')
-        );
+        return iterator_to_array($this->iterateLinks(), false);
     }
 
-    /**
-     * Check if the code is a text code
-     *
-     * @return bool True if code type is text
-     */
-    public function isText(): bool { return $this->getCodeType() === self::CODE_TEXT; }
+    /** @return \Generator<int, LinkItem, void, void> */
+    public function iterateLinks(): \Generator
+    {
+        foreach ($this->iterateObjects('links') as $item) yield new LinkItem($item);
+    }
 
+    public function getType(): ?CodeType
+    {
+        $type = $this->getCodeType();
+        return $type === null ? null : CodeType::tryFrom($type);
+    }
 
-    /**
-     * Check if the code is an image code
-     *
-     * @return bool True if code type is image
-     */
-    public function isImage(): bool { return $this->getCodeType() === self::CODE_IMAGE; }
-
-    /**
-     * Check if the code is a pre-order code
-     *
-     * @return bool True if code type is pre-order
-     */
-    public function isPreOrder(): bool
-    { return $this->getCodeType() === self::PRE_ORDER; }
-
-    /**
-     * Get the id for the code
-     * @return string|null
-     */
+    public function isText(): bool { return $this->getType() === CodeType::Text; }
+    public function isImage(): bool { return $this->getType() === CodeType::Image; }
+    public function isPreOrder(): bool { return $this->getType() === CodeType::PreOrder; }
     public function getCodeId(): ?string { return $this->str('codeId'); }
-
-    /**
-     * Get the type of the code
-     * @return string|null
-     */
     public function getCodeType(): ?string { return $this->str('codeType'); }
-    /**
-     * CODE_IMAGE contains base64 string and CODE_TEXT is simple string
-     */
     public function getCode(): ?string { return $this->str('code'); }
     public function getFilename(): ?string { return $this->str('filename'); }
 
-    /**
-     * Save image code as a file
-     *
-     * Downloads the image code using the client and saves it to the specified directory.
-     *
-     * @param string $saveDir Directory to save images
-     *
-     * @return string Full path of saved image
-     * @throws RuntimeException
-     */
-    public function saveImageBase64(string $saveDir = __DIR__ . '/codes'): string {
-
-        if (!$this->isImage()) {
-            throw new RuntimeException("Only image codes can be downloaded.");
-        }
-
-        $content = $this->getCode();
-        if (!$content) {
-            throw new RuntimeException("Download link not found for the image code.");
-        }
-
-        $fileName = $this->getFilename();
-        if (!$fileName) {
-            throw new RuntimeException('Filename not found for the image code.');
-        }
-
-        $fileName = basename($fileName);
-        $fullPath = self::prepareDirectory($saveDir, $fileName);
-
-        $decoded = base64_decode($content, true);
-        if ($decoded === false) {
-            throw new RuntimeException('Invalid base64 content for image code.');
-        }
-
-        $handle = @fopen($fullPath, 'xb');
-        if ($handle === false) {
-            throw new RuntimeException('Image code file already exists or cannot be created.');
-        }
-
-        try {
-            if (fwrite($handle, $decoded) !== strlen($decoded)) {
-                throw new RuntimeException('Unable to write the complete image code.');
-            }
-        } finally {
-            fclose($handle);
-        }
-        return $fullPath;
-    }
-
-    private static function prepareDirectory($whereToSaveDirectory, $fileName): string
+    /** @deprecated Use ImageCodeWriter so resources stay free of filesystem side effects. */
+    public function saveImageBase64(string $saveDir = __DIR__ . '/codes'): string
     {
-        if (!is_dir($whereToSaveDirectory)) {
-            if (!mkdir($whereToSaveDirectory, 0755, true) && !is_dir($whereToSaveDirectory)) {
-                throw new RuntimeException("Failed to create directory: {$whereToSaveDirectory}");
-            }
-        }
-        return rtrim($whereToSaveDirectory, '/\\') . DIRECTORY_SEPARATOR . $fileName;
+        return (new ImageCodeWriter())->write($this, $saveDir);
     }
 }

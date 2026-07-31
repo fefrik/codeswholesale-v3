@@ -2,96 +2,119 @@
 
 namespace CodesWholesaleApi\Resource;
 
-/**
- * Resource base class
- */
+use CodesWholesaleApi\Resource\Exceptions\ResourceMappingException;
+
 abstract class Resource
 {
-    protected \stdClass $data;
+    private readonly \stdClass $data;
 
     public function __construct(\stdClass $data)
     {
-        $this->data = $data;
+        $this->data = self::cloneObject($data);
     }
 
     protected function str(string $key): ?string
     {
-        return isset($this->data->{$key}) ? (string) $this->data->{$key} : null;
+        $value = $this->value($key);
+        if ($value === null) return null;
+        if (!is_string($value)) throw ResourceMappingException::invalidType($key, 'string', $value);
+        return $value;
     }
 
     protected function int(string $key): ?int
     {
-        return isset($this->data->{$key}) ? (int) $this->data->{$key} : null;
+        $value = $this->value($key);
+        if ($value === null) return null;
+        if (!is_int($value)) throw ResourceMappingException::invalidType($key, 'int', $value);
+        return $value;
     }
 
     protected function float(string $key): ?float
     {
-        return isset($this->data->{$key}) ? (float) $this->data->{$key} : null;
+        $value = $this->value($key);
+        if ($value === null) return null;
+        if (!is_int($value) && !is_float($value)) {
+            throw ResourceMappingException::invalidType($key, 'float', $value);
+        }
+        return (float) $value;
     }
 
     protected function bool(string $key): ?bool
     {
-        return isset($this->data->{$key}) ? (bool) $this->data->{$key} : null;
+        $value = $this->value($key);
+        if ($value === null) return null;
+        if (!is_bool($value)) throw ResourceMappingException::invalidType($key, 'bool', $value);
+        return $value;
     }
 
-    /**
-     * Returns list of objects (stdClass) from JSON array field.
-     *
-     * @return array<int, \stdClass>
-     */
-    protected function list(string $key): array
+    protected function dateTime(string $key): ?\DateTimeImmutable
     {
-        $v = $this->data->{$key} ?? [];
+        $value = $this->str($key);
+        if ($value === null || $value === '') return null;
 
-        if (!is_array($v)) {
-            return [];
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Exception $e) {
+            throw new ResourceMappingException('Invalid date in resource field "' . $key . '": ' . $value, 0, $e);
         }
+    }
 
-        // jen stdClass prvky + reindex (0..n)
-        $out = [];
-        foreach ($v as $item) {
-            if ($item instanceof \stdClass) {
-                $out[] = $item;
+    /** @return \Generator<int, \stdClass, void, void> */
+    protected function iterateObjects(string $key): \Generator
+    {
+        $value = $this->value($key);
+        if ($value === null) return;
+        if (!is_array($value)) throw ResourceMappingException::invalidType($key, 'array<object>', $value);
+
+        foreach ($value as $index => $item) {
+            if (!$item instanceof \stdClass) {
+                throw ResourceMappingException::invalidType($key . '[' . $index . ']', 'object', $item);
             }
+            yield $item;
         }
-
-        return $out;
     }
 
-    protected function obj(string $key): ?\stdClass
+    /** @return list<string> */
+    protected function stringList(string $key): array
     {
-        $v = $this->data->{$key} ?? null;
-        return ($v instanceof \stdClass) ? $v : null;
-    }
+        $value = $this->value($key);
+        if ($value === null) return [];
+        if (!is_array($value)) throw ResourceMappingException::invalidType($key, 'array<string>', $value);
 
-    /**
-     * Returns scalar array (e.g. list of strings) from JSON array field.
-     * No filtering is done (keeps ints/strings/bools/null if API sends them).
-     */
-    protected function scalarArray(string $key): array
-    {
-        $v = $this->data->{$key} ?? [];
-        return is_array($v) ? array_values($v) : [];
+        $result = [];
+        foreach ($value as $index => $item) {
+            if (!is_string($item)) {
+                throw ResourceMappingException::invalidType($key . '[' . $index . ']', 'string', $item);
+            }
+            $result[] = $item;
+        }
+        return $result;
     }
 
     public function raw(): \stdClass
     {
-        return $this->data;
+        return self::cloneObject($this->data);
     }
 
-    /**
-     * Deep-convert underlying JSON object to associative array.
-     */
+    /** @return array<string, mixed> */
     public function toArray(): array
     {
-        $json = json_encode($this->data, JSON_UNESCAPED_UNICODE);
+        /** @var array<string, mixed> $result */
+        $result = json_decode(json_encode($this->data, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        return $result;
+    }
 
-        if ($json === false) {
-            // fail fast – kdyby se někdy objevily neenkódovatelné hodnoty
-            throw new \RuntimeException('Failed to JSON-encode Resource: ' . json_last_error_msg());
+    private function value(string $key): mixed
+    {
+        return property_exists($this->data, $key) ? $this->data->{$key} : null;
+    }
+
+    private static function cloneObject(\stdClass $data): \stdClass
+    {
+        $clone = json_decode(json_encode($data, JSON_THROW_ON_ERROR), false, 512, JSON_THROW_ON_ERROR);
+        if (!$clone instanceof \stdClass) {
+            throw new \LogicException('Resource data must encode to a JSON object.');
         }
-
-        $arr = json_decode($json, true);
-        return is_array($arr) ? $arr : [];
+        return $clone;
     }
 }

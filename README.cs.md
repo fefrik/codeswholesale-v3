@@ -71,9 +71,12 @@ Client
 - převádí odpovědi na **Resource objekty**
 
 ### Resource
-- immutable DTO (read‑only)
-- typové gettery
-- žádná business logika
+- immutable DTO: vstupní data i `raw()` jsou oddělené hlubokou kopií
+- striktní typové gettery; neplatný typ z API vyhodí `ResourceMappingException`
+- datumy jako `DateTimeImmutable` se zachováním časové zóny
+- vnořené kolekce nabízejí paměťově úsporné generátory `iterate*()`
+- stabilní hodnoty, například typ kódu, reprezentují PHP enumy
+- žádné filesystemové ani HTTP vedlejší efekty
 
 ---
 
@@ -95,7 +98,7 @@ Client
 ### Kódy (licenční klíče)
 - získání zakoupených klíčů
 - textové i obrázkové kódy
-- práce s base64 obrázky
+- ukládání base64 obrázků přes `ImageCodeWriter`
 
 ### Účet
 - zůstatek účtu
@@ -156,6 +159,35 @@ foreach ($sdk->products()->iterate(['updatedSince' => $lastSync]) as $product) {
 Obnovitelné úlohy mohou použít `iterateWithContinuationStorage()`. Continuation
 token se uloží až po zpracování celé stránky, takže přerušení iterace nepřeskočí
 nezpracované produkty.
+
+### Kolekce a datumy v resources
+
+Pole zůstávají dostupná přes klasické gettery. Pro větší vnořené kolekce použijte
+generátory:
+
+```php
+foreach ($order->iterateProducts() as $orderedProduct) {
+    foreach ($orderedProduct->iterateCodes() as $code) {
+        deliver($code);
+    }
+}
+
+$releasedAt = $product->getReleaseDate(); // ?DateTimeImmutable
+```
+
+Popis produktu vrací konkrétní `LocalizedTitleItem`, `FactSheetItem`, `PhotoItem`,
+`VideoItem` a `ReleaseItem`. Metoda `raw()` vrací hlubokou kopii a resource přes
+ni nelze změnit.
+
+Obrázkové kódy ukládá samostatná služba:
+
+```php
+use CodesWholesaleApi\Service\ImageCodeWriter;
+
+$path = (new ImageCodeWriter())->write($code, $privateDirectory);
+```
+
+`CodeItem::saveImageBase64()` zůstává pouze jako deprecated kompatibilní wrapper.
 
 ---
 
