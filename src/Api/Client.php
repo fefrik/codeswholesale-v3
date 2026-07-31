@@ -7,7 +7,7 @@ use CodesWholesaleApi\Config\Config;
 use CodesWholesaleApi\Http\HttpResponse;
 use CodesWholesaleApi\Storage\OAuth2\OAuthStorageInterface;
 
-final class Client
+class Client
 {
     /** @var Config */
     private $config;

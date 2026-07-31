@@ -156,6 +156,22 @@ $sdk->products()->getAll(
 );
 ```
 
+### Memory-efficient streaming
+
+For large catalogs, prefer the generator. It keeps only the current API page in
+memory and yields one `ProductItem` at a time:
+
+```php
+foreach ($sdk->products()->iterate(['updatedSince' => $lastSync]) as $product) {
+    upsertProduct($product);
+}
+```
+
+For resumable jobs, configure a `ContinuationTokenStorageInterface` and use
+`iterateWithContinuationStorage()`. A token is checkpointed only after the
+complete page has been consumed, so stopping the loop cannot skip products from
+the unfinished page.
+
 ---
 
 ## Product Synchronization (recommended)

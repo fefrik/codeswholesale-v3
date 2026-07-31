@@ -87,56 +87,54 @@ final class ProductsApi
         ?string $continuationToken = null,
         int $maxRetry = 5
     ): void {
-        if (isset($filters['continuationToken'])) {
-            throw new \InvalidArgumentException(
-                'continuationToken does not belong to filters; pass it as a separate argument.'
+        foreach ($this->iteratePages($filters, $continuationToken, $maxRetry) as $page) {
+            $result = $callback($page['items'], $page['continuationToken']);
+            if ($result === false) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Stream products one by one while keeping only the current API page in memory.
+     *
+     * @return \Generator<int, ProductItem, void, void>
+     */
+    public function iterate(
+        array $filters = [],
+        ?string $continuationToken = null,
+        int $maxRetry = 5
+    ): \Generator {
+        foreach ($this->iteratePages($filters, $continuationToken, $maxRetry) as $page) {
+            foreach ($page['items'] as $product) {
+                yield $product;
+            }
+        }
+    }
+
+    /**
+     * Stream products and checkpoint only after the whole current page was consumed.
+     * If iteration is interrupted mid-page, that page is safely repeated on resume.
+     *
+     * @return \Generator<int, ProductItem, void, void>
+     */
+    public function iterateWithContinuationStorage(
+        array $filters = [],
+        int $maxRetry = 5
+    ): \Generator {
+        if (!$this->continuationTokenStorage) {
+            throw new \LogicException(
+                'ContinuationTokenStorage is not configured. Pass it to constructor or use withContinuationTokenStorage().'
             );
         }
 
-        $this->validateFilters($filters);
-
-        $retry = 0;
-
-        while (true) {
-            try {
-                $query = $filters;
-                if ($continuationToken) {
-                    $query['continuationToken'] = $continuationToken;
-                }
-
-                $page = $this->getPage($query);
-
-                $result = call_user_func($callback, $page['items'], $page['continuationToken']);
-                if ($result === false) {
-                    return;
-                }
-
-                $continuationToken = $page['continuationToken'];
-                $retry = 0;
-
-                if (!$continuationToken) {
-                    return;
-                }
-
-                usleep(200000);
-            } catch (ApiException $e) {
-                $status = $e->getResponse()->getStatus();
-                if ($status !== 429 && $status < 500) {
-                    throw $e;
-                }
-
-                $retry++;
-
-                if ($retry > $maxRetry) {
-                    throw new \RuntimeException(
-                        "Failed after {$maxRetry} attempts (last HTTP {$status}): {$e->getMessage()}",
-                        0,
-                        $e
-                    );
-                }
-
-                sleep(3 * $retry);
+        $storage = $this->continuationTokenStorage;
+        foreach ($this->iteratePages($filters, $storage->getToken(), $maxRetry) as $page) {
+            foreach ($page['items'] as $product) {
+                yield $product;
             }
+
+            $storage->saveToken($page['continuationToken']);
         }
     }
 
@@ -215,5 +213,70 @@ final class ProductsApi
         }
 
         return $query;
+    }
+
+    /**
+     * @return \Generator<int, array{items: array<int, ProductItem>, continuationToken: ?string, raw: \stdClass}, void, void>
+     */
+    private function iteratePages(
+        array $filters,
+        ?string $continuationToken,
+        int $maxRetry
+    ): \Generator {
+        if (isset($filters['continuationToken'])) {
+            throw new \InvalidArgumentException(
+                'continuationToken does not belong to filters; pass it as a separate argument.'
+            );
+        }
+        if ($maxRetry < 0) {
+            throw new \InvalidArgumentException('maxRetry must not be negative.');
+        }
+
+        $this->validateFilters($filters);
+
+        while (true) {
+            $query = $filters;
+            if ($continuationToken !== null && $continuationToken !== '') {
+                $query['continuationToken'] = $continuationToken;
+            }
+
+            $page = $this->getPageWithRetry($query, $maxRetry);
+            yield $page;
+
+            $continuationToken = $page['continuationToken'];
+            if ($continuationToken === null || $continuationToken === '') {
+                return;
+            }
+
+            usleep(200000);
+        }
+    }
+
+    /** @return array{items: array<int, ProductItem>, continuationToken: ?string, raw: \stdClass} */
+    private function getPageWithRetry(array $query, int $maxRetry): array
+    {
+        $retry = 0;
+
+        while (true) {
+            try {
+                return $this->getPage($query);
+            } catch (ApiException $e) {
+                $status = $e->getResponse()->getStatus();
+                if ($status !== 429 && $status < 500) {
+                    throw $e;
+                }
+
+                if ($retry >= $maxRetry) {
+                    throw new \RuntimeException(
+                        "Failed after {$maxRetry} retries (last HTTP {$status}): {$e->getMessage()}",
+                        0,
+                        $e
+                    );
+                }
+
+                $retry++;
+                sleep(3 * $retry);
+            }
+        }
     }
 }

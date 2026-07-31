@@ -142,6 +142,21 @@ $sdk->products()->getAll(
 );
 ```
 
+### Paměťově úsporné streamování
+
+Pro velké katalogy použijte generátor. V paměti drží jen aktuální stránku API a
+jednotlivé `ProductItem` předává postupně:
+
+```php
+foreach ($sdk->products()->iterate(['updatedSince' => $lastSync]) as $product) {
+    upsertProduct($product);
+}
+```
+
+Obnovitelné úlohy mohou použít `iterateWithContinuationStorage()`. Continuation
+token se uloží až po zpracování celé stránky, takže přerušení iterace nepřeskočí
+nezpracované produkty.
+
 ---
 
 ## Synchronizace produktů (doporučeno)

@@ -18,6 +18,8 @@ use CodesWholesaleApi\Mode;
 use CodesWholesaleApi\OAuthStorageMode;
 use CodesWholesaleApi\Resource\CodeItem;
 use CodesWholesaleApi\Sdk\Sdk;
+use CodesWholesaleApi\Api\ProductsApi;
+use CodesWholesaleApi\Storage\ContinuationToken\ContinuationTokenStorageInterface;
 use CodesWholesaleApi\Storage\OAuth2\OAuthStorageInterface;
 
 final class MemoryOAuthStorage implements OAuthStorageInterface
@@ -26,6 +28,31 @@ final class MemoryOAuthStorage implements OAuthStorageInterface
     public function saveToken(array $tokenData): void { $this->token = $tokenData; }
     public function getToken(): ?array { return $this->token; }
     public function clearToken(): void { $this->token = null; }
+}
+
+final class MemoryContinuationStorage implements ContinuationTokenStorageInterface
+{
+    public ?string $token = null;
+    /** @var array<int, ?string> */
+    public array $history = [];
+    public function getToken(): ?string { return $this->token; }
+    public function saveToken(?string $token): void { $this->history[] = $token; $this->token = $token; }
+    public function clearToken(): void { $this->token = null; }
+}
+
+final class PagedClient extends Client
+{
+    /** @var array<string, \stdClass> */
+    private array $pages;
+
+    /** @param array<string, \stdClass> $pages */
+    public function __construct(array $pages) { $this->pages = $pages; }
+
+    public function requestData(string $method, string $path, ?array $body = null, array $query = []): \stdClass
+    {
+        $token = (string) ($query['continuationToken'] ?? '');
+        return $this->pages[$token];
+    }
 }
 
 function expect(bool $condition, string $message): void
@@ -67,5 +94,35 @@ expect(file_get_contents($path) === 'image-data', 'Image code content was not sa
 expectException(static function () use ($code, $tempDir): void { $code->saveImageBase64($tempDir); }, RuntimeException::class);
 unlink($path);
 rmdir($tempDir);
+
+$pagedClient = new PagedClient([
+    '' => (object) [
+        'items' => [(object) ['productId' => 'p1'], (object) ['productId' => 'p2']],
+        'continuationToken' => 'next',
+    ],
+    'next' => (object) [
+        'items' => [(object) ['productId' => 'p3']],
+        'continuationToken' => null,
+    ],
+]);
+$ids = [];
+foreach ((new ProductsApi($pagedClient))->iterate() as $product) {
+    $ids[] = $product->getId();
+}
+expect($ids === ['p1', 'p2', 'p3'], 'Streaming iterator did not traverse all product pages.');
+
+$continuation = new MemoryContinuationStorage();
+$stream = (new ProductsApi($pagedClient, $continuation))->iterateWithContinuationStorage();
+foreach ($stream as $product) {
+    expect($product->getId() === 'p1', 'Unexpected first streamed product.');
+    break;
+}
+unset($stream);
+expect($continuation->history === [], 'A partially consumed page must not advance its continuation token.');
+
+foreach ((new ProductsApi($pagedClient, $continuation))->iterateWithContinuationStorage() as $product) {
+    // consume the complete stream
+}
+expect($continuation->history === ['next', null], 'Continuation token must be checkpointed after each complete page.');
 
 fwrite(STDOUT, "All tests passed.\n");

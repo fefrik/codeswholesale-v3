@@ -57,21 +57,14 @@ final class ProductSyncRunner
         $productsApi = (new ProductsApi($this->client))
             ->withContinuationTokenStorage($this->continuationStorage);
 
-        $productsApi->getAllWithContinuationStorage(
-            function (array $items, ?string $nextToken) use ($onProduct) {
-                // $items uz jsou ProductItem[]
-                foreach ($items as $product) {
-                    $onProduct($product);
-                }
-            },
-            $filters,
-            $this->maxRetry
-        );
+        foreach ($productsApi->iterateWithContinuationStorage($filters, $this->maxRetry) as $product) {
+            $onProduct($product);
+        }
 
         // sync dobehl bez vyjimky -> checkpoint
         $this->lastSyncStorage->saveLastSyncAt($nowUtc);
 
-        // pro jistotu vycistime (getAllWithContinuationStorage uklada i null, ale at je to explicitni)
+        // The streaming iterator stores null after its final page; keep completion explicit.
         $this->continuationStorage->clearToken();
 
         if ($this->sleepBetweenRunsSeconds > 0) {
