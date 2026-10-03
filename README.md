@@ -175,6 +175,13 @@ For resumable jobs, configure a `ContinuationTokenStorageInterface` and use
 complete page has been consumed, so stopping the loop cannot skip products from
 the unfinished page.
 
+### Rate limits and transient errors
+
+Product pagination retries HTTP `429` and `5xx` responses. When CW returns a
+`Retry-After` header, the SDK waits for the requested number of seconds;
+otherwise it uses the pagination retry backoff. Configure the retry count with
+the `maxRetry` argument of the product iteration methods.
+
 ### Resource collections and dates
 
 Array getters remain available for convenience. For larger nested collections,

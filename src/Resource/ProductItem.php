@@ -94,10 +94,16 @@ final class ProductItem extends Resource
         return $this->stringList('languages');
     }
 
-    /** @return array<int, string> */
+    /** @return list<BadgeItem> */
     public function getBadges(): array
     {
-        return $this->stringList('badges');
+        return iterator_to_array($this->iterateBadges(), false);
+    }
+
+    /** @return \Generator<int, BadgeItem, void, void> */
+    public function iterateBadges(): \Generator
+    {
+        foreach ($this->iterateObjects('badges') as $item) yield new BadgeItem($item);
     }
 
     public function getRegionDescription(): ?string

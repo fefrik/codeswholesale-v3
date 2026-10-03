@@ -160,6 +160,13 @@ Obnovitelné úlohy mohou použít `iterateWithContinuationStorage()`. Continuat
 token se uloží až po zpracování celé stránky, takže přerušení iterace nepřeskočí
 nezpracované produkty.
 
+### Limity požadavků a dočasné chyby
+
+Stránkování produktů opakuje požadavky po odpovědích HTTP `429` a `5xx`.
+Pokud CW vrátí hlavičku `Retry-After`, SDK počká požadovaný počet sekund;
+jinak použije prodlevu stránkovacího retry mechanismu. Počet opakování lze
+nastavit argumentem `maxRetry` u metod pro iteraci produktů.
+
 ### Kolekce a datumy v resources
 
 Pole zůstávají dostupná přes klasické gettery. Pro větší vnořené kolekce použijte

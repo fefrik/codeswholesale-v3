@@ -10,6 +10,7 @@ spl_autoload_register(static function (string $class): void {
 });
 
 use CodesWholesaleApi\Api\Client;
+use CodesWholesaleApi\Api\ApiException;
 use CodesWholesaleApi\Auth\TokenNormalizer;
 use CodesWholesaleApi\CodesWholesale;
 use CodesWholesaleApi\Config\Config;
@@ -91,8 +92,17 @@ expectException(static function () use ($storage): void { new Client(Config::san
 expectException(static function () use ($storage): void { new Client(Config::sandbox(), $storage, 'client', 'secret', null, 0); }, InvalidArgumentException::class);
 expectException(static function () use ($storage): void { new Client(Config::sandbox(), $storage, 'client', 'secret', null, 20, "ok\r\nInjected: yes"); }, InvalidArgumentException::class);
 
-$arrayResponse = new HttpResponse(200, '[]', []);
+$arrayResponse = new HttpResponse(200, '[]', [], ['retry-after' => '12']);
 expect(is_array($arrayResponse->getJsonBody()), 'HttpResponse must safely represent top-level JSON arrays.');
+expect($arrayResponse->getHeader('Retry-After') === '12', 'HTTP headers must be retrievable case-insensitively.');
+
+$retryMethod = new ReflectionMethod(ProductsApi::class, 'getRetryDelaySeconds');
+$retryDelay = $retryMethod->invoke(
+    new ProductsApi(new PagedClient([])),
+    new ApiException(new HttpResponse(429, '{}', (object) [], ['Retry-After' => '7']), 'rate limited'),
+    1
+);
+expect($retryDelay === 7, 'Products retry must honor Retry-After.');
 
 $tempDir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cw-sdk-' . bin2hex(random_bytes(6));
 $code = new CodeItem((object) ['codeType' => 'CODE_IMAGE', 'code' => base64_encode('image-data'), 'filename' => '../key.png']);
@@ -110,6 +120,7 @@ $source = (object) [
     'quantity' => 5,
     'releaseDate' => '2026-08-01T10:15:00+02:00',
     'regions' => ['WORLDWIDE'],
+    'badges' => [(object) ['id' => 7, 'name' => 'Pre-order', 'slug' => 'pre-order']],
     'images' => [(object) ['format' => 'COVER', 'image' => null]],
     'prices' => [(object) ['from' => 1, 'value' => 9.99]],
 ];
@@ -120,6 +131,7 @@ $raw->name = 'Changed raw copy';
 expect($resource->getName() === 'Original', 'Resource data must be immutable from input and raw copies.');
 expect($resource->getReleaseDate()?->format(DATE_ATOM) === '2026-08-01T10:15:00+02:00', 'Release date mapping lost timezone information.');
 expect($resource->getRegions() === ['WORLDWIDE'], 'Typed string list mapping failed.');
+expect($resource->getBadges()[0]->getSlug() === 'pre-order', 'Badge resource mapping failed.');
 expect(count(iterator_to_array($resource->iteratePrices())) === 1, 'Nested price iterator failed.');
 expectException(static function () use ($resource): void { $resource->getImageUrl('COVER'); }, NoImagesFoundException::class);
 expectException(static function (): void { (new ProductItem((object) ['quantity' => '5']))->getStock(); }, ResourceMappingException::class);

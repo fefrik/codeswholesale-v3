@@ -266,6 +266,7 @@ class Client
         }
 
         $ch = curl_init($url);
+        $responseHeaders = [];
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => $this->timeoutSeconds,
@@ -273,6 +274,29 @@ class Client
             CURLOPT_USERAGENT => $this->userAgent,
             CURLOPT_CUSTOMREQUEST => strtoupper($method),
             CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_HEADERFUNCTION => static function ($curl, string $line) use (&$responseHeaders): int {
+                $length = strlen($line);
+                $line = trim($line);
+
+                if ($line === '') {
+                    return $length;
+                }
+                if (stripos($line, 'HTTP/') === 0) {
+                    $responseHeaders = [];
+                    return $length;
+                }
+
+                $parts = explode(':', $line, 2);
+                if (count($parts) === 2) {
+                    $name = strtolower(trim($parts[0]));
+                    $value = trim($parts[1]);
+                    $responseHeaders[$name] = isset($responseHeaders[$name])
+                        ? $responseHeaders[$name] . ', ' . $value
+                        : $value;
+                }
+
+                return $length;
+            },
         ]);
 
         if ($payload !== null) {
@@ -303,7 +327,7 @@ class Client
             $status,
             (string) $raw,
             $json,
-            []
+            $responseHeaders
         );
     }
 

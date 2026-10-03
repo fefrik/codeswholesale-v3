@@ -282,8 +282,25 @@ final class ProductsApi
                 }
 
                 $retry++;
-                sleep(3 * $retry);
+                sleep($this->getRetryDelaySeconds($e, $retry));
             }
         }
+    }
+
+    private function getRetryDelaySeconds(ApiException $e, int $retry): int
+    {
+        $retryAfter = trim((string) $e->getResponse()->getHeader('Retry-After'));
+        if ($retryAfter !== '') {
+            if (is_numeric($retryAfter)) {
+                return max(1, min(300, (int) ceil((float) $retryAfter)));
+            }
+
+            $retryAt = strtotime($retryAfter);
+            if ($retryAt !== false) {
+                return max(1, min(300, $retryAt - time()));
+            }
+        }
+
+        return min(300, 3 * $retry);
     }
 }

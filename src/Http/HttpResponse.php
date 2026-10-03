@@ -51,6 +51,18 @@ final class HttpResponse
         return $this->headers;
     }
 
+    public function getHeader(string $name): ?string
+    {
+        $name = strtolower(trim($name));
+        foreach ($this->headers as $headerName => $value) {
+            if (strtolower((string) $headerName) === $name) {
+                return is_array($value) ? implode(', ', $value) : (string) $value;
+            }
+        }
+
+        return null;
+    }
+
     public function isSuccess(): bool
     {
         return $this->status >= 200 && $this->status < 300;
