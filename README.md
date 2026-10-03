@@ -180,7 +180,8 @@ the unfinished page.
 Product pagination retries HTTP `429` and `5xx` responses. When CW returns a
 `Retry-After` header, the SDK waits for the requested number of seconds;
 otherwise it uses the pagination retry backoff. Configure the retry count with
-the `maxRetry` argument of the product iteration methods.
+the `maxRetry` argument of the product iteration methods. This behavior applies
+to both full and incremental catalog synchronization.
 
 ### Resource collections and dates
 
